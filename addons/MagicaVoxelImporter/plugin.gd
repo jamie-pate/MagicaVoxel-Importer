@@ -34,7 +34,7 @@ class ImportPlugin extends EditorImportPlugin:
 	
 	#The Name shown under 'Import As' in the Import menu
 	func get_visible_name():
-		return "MagicaVoxels as Mesh"
+		return "MagicaVoxels as Points"
 	
 	#The File extensions that this Plugin can import. Those will then show up in the Filesystem
 	func get_recognized_extensions():
@@ -164,25 +164,42 @@ class ImportPlugin extends EditorImportPlugin:
 		
 		#Create the mesh
 		var st = SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		st.begin(Mesh.PRIMITIVE_POINTS)
 		for voxel in data:
-			var to_draw = []
-			if not above(voxel,voxelArray): to_draw += top
-			if not below(voxel,voxelArray): to_draw += down
-			if not onleft(voxel,voxelArray): to_draw += left
-			if not onright(voxel,voxelArray): to_draw += right
-			if not infront(voxel,voxelArray): to_draw += front
-			if not behind(voxel,voxelArray): to_draw += back
+			var normal = Vector3(0, 0, 0)
+			
+			if not above(voxel,voxelArray): normal += normals.up
+			if not below(voxel,voxelArray): normal += normals.down
+			if not onleft(voxel,voxelArray): normal += normals.left
+			if not onright(voxel,voxelArray): normal += normals.right
+			if not infront(voxel,voxelArray): normal += normals.front
+			if not behind(voxel,voxelArray): normal += normals.back
 			
 			st.add_color(voxel.color)
+			normal = (normal.normalized() + Vector3(1, 1, 1)) * 0.5
+			st.add_normal(normal)
+			print(normal)
+			#st.add_tangent(normal.normalized())
+			st.add_vertex(voxel.pos + dif)
+			"""
 			for tri in to_draw:
 				st.add_vertex( (tri*0.5)+voxel.pos+dif)
-		st.generate_normals()
+			"""
+		#st.generate_normals()
 		
-		var material = SpatialMaterial.new()
-		material.vertex_color_is_srgb = true
-		material.vertex_color_use_as_albedo = true
-		material.roughness = 1
+		var shader_path = self.get_script().get_path().replace('plugin.gd', 'points.shader')
+		var material = ShaderMaterial.new()
+		var shader = preload('./points.shader');
+		print('SHADERPATH')
+		print(shader_path)
+		print(shader)
+		print(shader.code)
+		var shader_copy = Shader.new()
+		shader_copy.code = shader.code
+		material.shader = shader_copy
+		material.set_shader_param('screen_size', 1024)
+		material.set_shader_param('point_size', 20)
+		material.set_shader_param('albedo', Color(1, 1, 1))
 		#material.set_flag(material.FLAG_USE_COLOR_ARRAY,true)
 		st.set_material(material)
 		var mesh
@@ -276,6 +293,15 @@ class ImportPlugin extends EditorImportPlugin:
 		Vector3( 1.0000,-1.0000, 1.0000),
 		Vector3( 1.0000, 1.0000, 1.0000),
 	]
+	
+	var normals = {
+		'up': Vector3(0, 1, 0),
+		'down': Vector3(0, -1, 0),
+		'left': Vector3(-1, 0, 0),
+		'right': Vector3(1, 0, 0),
+		'front': Vector3(0, 0, 1),
+		'back': Vector3(0, 0, -1)
+	}
 	
 	#Some staic functions
 	func above(cube,array): return array[cube.pos.x][cube.pos.y+1][cube.pos.z]
