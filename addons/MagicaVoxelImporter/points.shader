@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlick_ggx;// vertex_lighting;//, unshaded;
+render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlick_ggx;
 uniform vec4 albedo : hint_color;
 uniform sampler2D texture_albedo : hint_albedo;
 uniform float specular;
@@ -25,19 +25,20 @@ void vertex() {
 	if (PROJECTION_MATRIX[3][3] != 0.0) {
 		float h = abs(1.0 / (2.0 * PROJECTION_MATRIX[1][1]));
 		float sc = (h * 2.0); //consistent with Y-fov
-		MODELVIEW_MATRIX[0]*=sc;
-		MODELVIEW_MATRIX[1]*=sc;
-		MODELVIEW_MATRIX[2]*=sc;
+		POINT_SIZE = POINT_SIZE * 1.0/sc; // untested!
 	} else {
-		float sc = -(MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).z;
-		POINT_SIZE = POINT_SIZE * 1.0/sc;
+		vec4 screen_space = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
+		vec2 ascreen_space = abs(screen_space.xy);
+		float sc = -screen_space.z;
+		// increase point size with nearness to camera
+		// also increase point size as we approach the edges of the screen to compensate for distortion.
+		// TODO: generate some sort of sub-voxel 'antialiasing' to handle this?
+		POINT_SIZE = POINT_SIZE * 1.0/sc * (max(ascreen_space.x, ascreen_space.y) * 1.25 + 1.0);
 	}
 }
 
 void fragment() {
 	vec2 base_uv = UV;
-	//vec4 albedo_tex = texture(texture_albedo,POINT_COORD);
-	//albedo_tex *= COLOR;
 	ALBEDO = NORMAL;
 	ALBEDO = albedo.rgb * COLOR.rgb; //albedo.rgb * albedo_tex.rgb;
 	RIM = .05;
