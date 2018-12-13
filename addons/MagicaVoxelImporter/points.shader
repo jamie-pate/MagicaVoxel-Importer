@@ -23,8 +23,6 @@ void vertex() {
 	ROUGHNESS=roughness;
 	UV=UV*uv1_scale.xy+uv1_offset.xy;
 
-	// NOTE: not sure why, but doubling the normal fixes lighting
-	NORMAL = NORMAL * 2.0;
 	if (PROJECTION_MATRIX[3][3] != 0.0) {
 		float h = abs(1.0 / (2.0 * PROJECTION_MATRIX[1][1]));
 		float sc = (h * 2.0); //consistent with Y-fov

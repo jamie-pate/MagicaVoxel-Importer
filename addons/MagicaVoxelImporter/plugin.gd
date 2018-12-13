@@ -1,6 +1,7 @@
 tool
 extends EditorPlugin
 
+const shader = preload('./points.shader')
 var import_plugin
 var control
 
@@ -176,7 +177,7 @@ class ImportPlugin extends EditorImportPlugin:
 			if not behind(voxel,voxelArray): normal += normals.back
 			
 			st.add_color(voxel.color)
-			normal = (normal.normalized() + Vector3(1, 1, 1)) * 0.5
+			normal = normal.normalized()
 			st.add_normal(normal)
 			print(normal)
 			#st.add_tangent(normal.normalized())
@@ -189,14 +190,7 @@ class ImportPlugin extends EditorImportPlugin:
 		
 		var shader_path = self.get_script().get_path().replace('plugin.gd', 'points.shader')
 		var material = ShaderMaterial.new()
-		var shader = preload('./points.shader');
-		print('SHADERPATH')
-		print(shader_path)
-		print(shader)
-		print(shader.code)
-		var shader_copy = Shader.new()
-		shader_copy.code = shader.code
-		material.shader = shader_copy
+		material.shader = shader
 		material.set_shader_param('screen_size', 1024)
 		material.set_shader_param('point_size', 20)
 		material.set_shader_param('albedo', Color(1, 1, 1))
