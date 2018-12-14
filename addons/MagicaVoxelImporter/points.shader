@@ -15,8 +15,9 @@ uniform vec3 uv1_offset;
 uniform vec3 uv2_scale;
 uniform vec3 uv2_offset;
 uniform int screen_size;
-varying float x_squash;
-varying float y_squash;
+varying vec2 dc;
+varying vec2 adc;
+varying vec2 squash;
 
 
 void vertex() {
@@ -29,27 +30,23 @@ void vertex() {
 		float h = abs(1.0 / (2.0 * PROJECTION_MATRIX[1][1]));
 		float sc = (h * 2.0); //consistent with Y-fov
 		POINT_SIZE = POINT_SIZE * 1.0/sc; // untested!
+		dc = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xy; // untested!
+		adc = abs(dc);
 	} else {
 		vec4 screen_space = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
 		float sc = -screen_space.z;
 		vec4 proj_space = PROJECTION_MATRIX * MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
-		PROJECTION_MATRIX *= mat4(1.0);
-		vec2 ascreen_space = abs(proj_space.xy);
-		float ss_max = max(ascreen_space.x, ascreen_space.y);
-		// increase point size with nearness to camera
-		// also increase point size as we approach the edges of the screen to compensate for distortion.
-		// TODO: generate some sort of sub-voxel 'antialiasing' to handle this?
-		//float EDGE_GROW = 0.5;
-		float EDGE_GROW = 0.0;
-		POINT_SIZE = POINT_SIZE * 1.0/sc * (ss_max * EDGE_GROW + 1.0);
-		// HAVE To get Z in here somehow
-		if (ascreen_space.x > ascreen_space.y) {
-			x_squash = ascreen_space.x;
-			y_squash = 0.0;
-		} else {
-			y_squash = ascreen_space.y;
-			x_squash = 0.0;
+		// NDC (Normalized Display Coordinates) from clip space:
+		proj_space.xyz /= proj_space.w; 
+		dc = proj_space.xy;
+		adc = abs(dc);
+		// pull aspect ratio from projection matrix
+		float aspect = PROJECTION_MATRIX[1][1] / PROJECTION_MATRIX[0][0];
+		if (aspect < 1.0) {
+			aspect = 1.0/aspect;
 		}
+		float EDGE_GROW = 1.0 * aspect;
+		POINT_SIZE *= 1.0/sc * (1.0 + max(adc.x, adc.y) * EDGE_GROW) * float(screen_size) * 0.001;
 	}
 }
 
@@ -62,16 +59,7 @@ void fragment() {
 	);
 	float EDGE_SQUASH = 1.5;
 	vec2 edge = 1.0 - abs(POINT_COORD - vec2(0.5)) * 2.0;
-	if (x_squash > 0.0) {
-		edge.x *= x_squash;
-		ALBEDO.r = mod(FRAGCOORD.x, 50.0) + VIEWPORT_SIZE.x;
-		ALBEDO.b = min(0.5, mod(x_squash, 0.2) * 10.0);
-	}
-	if (y_squash > 0.0) {
-		edge.y *= y_squash;
-		ALBEDO.g = mod(FRAGCOORD.y, 50.0) + VIEWPORT_SIZE.y;
-		ALBEDO.b = min(0.5, mod(y_squash, 0.2) * 10.0);
-	}
+	edge *= 1.0 - adc;
 	edge = 1.0 - (pow(edge.yx, vec2(PARABLOID.x)) + (edge.xy * PARABLOID.y));
 
 	
