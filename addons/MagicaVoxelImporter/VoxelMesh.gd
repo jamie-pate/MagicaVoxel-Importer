@@ -10,6 +10,8 @@ func _ready():
 	# Called when the node is added to the scene for the first time.
 	# Initialization here
 	get_tree().connect('screen_resized', self, '_resized')
+	if point_size == 0:
+		point_size = 24
 	_resized()
 
 func _resized():
@@ -20,8 +22,6 @@ func _resized():
 				
 		var size = min(screen_size.x, screen_size.y)
 		mat.set_shader_param('screen_size', size)
-		print(viewport.get_size_override())
-		print('screen_size %s' % size)
 
 func _set_point_size(value):
 	point_size = value
