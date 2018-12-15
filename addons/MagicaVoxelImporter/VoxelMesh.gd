@@ -20,8 +20,7 @@ func _resized():
 	if viewport:
 		var screen_size = viewport.get_size_override() if viewport.is_size_override_enabled() else viewport.size
 				
-		var size = max(screen_size.x, screen_size.y)
-		mat.set_shader_param('screen_size', size)
+		mat.set_shader_param('screen_size', screen_size)
 
 func _set_point_size(value):
 	point_size = value

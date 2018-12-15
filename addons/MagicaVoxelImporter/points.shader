@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlick_ggx, unshaded;
+render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlick_ggx;
 uniform vec4 albedo : hint_color;
 uniform sampler2D texture_albedo : hint_albedo;
 uniform float specular;
@@ -14,15 +14,16 @@ uniform vec3 uv1_scale;
 uniform vec3 uv1_offset;
 uniform vec3 uv2_scale;
 uniform vec3 uv2_offset;
-uniform int screen_size;
+uniform vec2 screen_size;
 varying vec2 dc;
 varying vec2 adc;
-varying vec2 squash;
+varying vec2 aspect;
 
 
 void vertex() {
 	COLOR.rgb = mix( pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)), COLOR.rgb* (1.0 / 12.92), lessThan(COLOR.rgb,vec3(0.04045)) );
-	POINT_SIZE=point_size * float(screen_size) * 0.001;
+	float max_screen_size = max(screen_size.x, screen_size.y);
+	POINT_SIZE=point_size;
 	ROUGHNESS=roughness;
 	UV=UV*uv1_scale.xy+uv1_offset.xy;
 
@@ -41,12 +42,10 @@ void vertex() {
 		dc = proj_space.xy;
 		adc = abs(dc);
 		// pull aspect ratio from projection matrix
-		float aspect = PROJECTION_MATRIX[1][1] / PROJECTION_MATRIX[0][0];
-		if (aspect < 1.0) {
-			aspect = 1.0/aspect;
-		}
-		float EDGE_GROW = 1.0 * aspect;
-		POINT_SIZE *= 1.0/sc * (1.0 + max(adc.x, adc.y) * EDGE_GROW) * float(screen_size) * 0.001;
+		aspect.x = PROJECTION_MATRIX[1][1] / PROJECTION_MATRIX[0][0];
+		aspect.y = 1.0 / aspect.x;
+		float EDGE_GROW = 0.15 * max(aspect.x, aspect.y);
+		POINT_SIZE *= 1.0/sc * (1.0 + max(adc.x, adc.y) * EDGE_GROW) * max_screen_size * 0.001;
 	}
 }
 
@@ -58,17 +57,18 @@ void fragment() {
 		0.15 // straight edge length 1.0 = straightest, 0.1 = almost none
 	);
 	float EDGE_SQUASH = 1.5;
-	vec2 edge = 1.0 - abs(POINT_COORD - vec2(0.5)) * 2.0;
-	edge *= 1.0 - adc;
-	edge = 1.0 - (pow(edge.yx, vec2(PARABLOID.x)) + (edge.xy * PARABLOID.y));
-
+	vec2 edge = abs(POINT_COORD - vec2(0.5)) * 2.0;
+	//edge = (pow(edge.xy, vec2(PARABLOID.x)) + (edge.yx * PARABLOID.y));
+	edge *= adc.yx * aspect.y + abs(adc.x - adc.y) / 2.2;
+	/*ALBEDO.b = mod(FRAGCOORD.x, 3.0);//screen_edgy.y;
 	
-	//ALBEDO.rg = edge.xy;
+	ALBEDO.r = edge.x;
+	ALBEDO.g = 0.0;*/
 	float cutoff = 0.9;
 	if (edge.x > cutoff || edge.y > cutoff) {
 		discard;
 	}
-	//ALBEDO = vec3(.x, .y, 0);
+	// ALBEDO = vec3(.x, .y, 0);
 	RIM = .05;
 	RIM_TINT = 0.9;
 	float metallic_tex = dot(texture(texture_metallic,base_uv),metallic_texture_channel);
