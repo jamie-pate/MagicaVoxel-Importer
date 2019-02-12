@@ -243,7 +243,8 @@ class ImportPlugin extends EditorImportPlugin:
 			var bone_map = {}
 			for name_id in options.bone_map.split(','):
 				var parts = name_id.split('=')
-				bone_map[parts[0]] = parts[1]
+				if len(parts) == 2:
+					bone_map[parts[0]] = parts[1]
 			# now push the voxel data into our voxel chunk structure
 			for chunk in data:
 				for i in range(0, chunk.data.size()):
@@ -253,8 +254,9 @@ class ImportPlugin extends EditorImportPlugin:
 						d.color = to_rgb(voxColors[d.color]-1)
 					else:
 						d.color = colors[d.color-1]
-					var bone_name = names[d.chunkNum]
-					d.bone = bone_map[bone_name]
+					if d.chunkNum < len(names):
+						var bone_name = names[d.chunkNum]
+						d.bone = bone_map[bone_name]
 		file.close()
 
 		##################
