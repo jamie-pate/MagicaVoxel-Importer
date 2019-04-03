@@ -219,7 +219,7 @@ class ImportPlugin extends EditorImportPlugin:
 					var tfmNode = MVTransformNode.new()
 					tfmNode.init(file)
 					#if CHUNK_DBG:
-					print('{0}'.format([tfmNode]).left(1000))
+					print('nTRN {0}'.format(tfmNode.frames).left(1000))
 					if '_name' in tfmNode.attr:
 						names[tfmNode.node_id] = tfmNode.attr._name
 				else:
@@ -251,7 +251,7 @@ class ImportPlugin extends EditorImportPlugin:
 					var d = chunk.data[i]
 					# use the voxColors array by default, or overrideColor if it is available
 					if colors == null:
-						d.color = to_rgb(voxColors[d.color]-1)
+						d.color = Color('#%06x' % voxColors[d.color - 1])
 					else:
 						d.color = colors[d.color-1]
 					if d.chunkNum < len(names):
@@ -286,6 +286,7 @@ class ImportPlugin extends EditorImportPlugin:
 		for chunk in data:
 			var voxelData = chunk.vox
 			for voxel in chunk.data:
+
 				var normal = Vector3(0, 0, 0)
 
 				if not above(voxel,voxelData): normal += normals.up
