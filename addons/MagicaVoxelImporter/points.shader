@@ -47,6 +47,9 @@ void vertex() {
 		float EDGE_GROW = 0.15 * max(aspect.x, aspect.y);
 		POINT_SIZE *= 1.0/sc * (1.0 + max(adc.x, adc.y) * EDGE_GROW) * max_screen_size * 0.001;
 	}
+	if (length(NORMAL) == 0.0) {
+		COLOR = vec4(0, 0, 0, 0)
+	}
 }
 
 void fragment() {

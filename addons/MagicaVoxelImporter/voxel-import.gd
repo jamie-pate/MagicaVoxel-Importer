@@ -206,12 +206,14 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	#   Create Mesh  #
 	##################
 
-	#Calculate offset
+	#Calculate aabb for centering offset
 	var s_x = 1000
 	var m_x = -1000
 	var s_z = 1000
 	var m_z = -1000
-	# todo: separate offset per chunk? transform using transformnodes above?
+	var m_y = -1000
+	var s_y = -1000
+	# todo: separate aabb per chunk? transform using transformnodes above?
 	for chunk in data:
 		for d in chunk.data:
 			var p = d.pos
@@ -219,6 +221,23 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			elif p.x > m_x: m_x = p.x
 			if p.z < s_z: s_z = p.z
 			elif p.z > m_z: m_z = p.z
+			# note: not centering on the y axis, but this is used in the next step
+			if p.y < s_y: s_y = p.y
+			elif p.y > m_y: m_y = p.y
+
+	for chunk in data:
+		# create empty 3d arrays as buffers for normal smoothing
+		chunk.normals = [[], []]
+		for n in chunk.normals:
+			for x_ in range(m_x - s_x + 1):
+				var x = []
+				n.append(x)
+				for y_ in range(m_y - s_y + 1):
+					var y = []
+					x.append(y)
+					for z_ in range(m_z - s_z + 1):
+						y.append(Vector3())
+
 	var x_dif = m_x - s_x
 	var z_dif = m_z - s_z
 	var dif = Vector3(-s_x-x_dif/2.0,0,-s_z-z_dif/2.0)
@@ -226,20 +245,45 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	#Create the mesh
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_POINTS)
+	print(options)
 	for chunk in data:
 		var voxelData = chunk.vox
+		var n = chunk.normals
+		var smoothing = options.smoothing
+		print(range(options.smoothing))
+		var max_smoothing = ceil(smoothing)
+		var i = 0
+		if smoothing <= 1:
+			i = 1
 		for voxel in chunk.data:
-
+			var key = Vector3(voxel.pos.x, voxel.pos.y, voxel.pos.z)
 			var normal = Vector3(0, 0, 0)
-
-			if not above(voxel,voxelData): normal += normals.up
-			if not below(voxel,voxelData): normal += normals.down
-			if not onleft(voxel,voxelData): normal += normals.left
-			if not onright(voxel,voxelData): normal += normals.right
-			if not infront(voxel,voxelData): normal += normals.front
-			if not behind(voxel,voxelData): normal += normals.back
-
+			if not above(voxel,voxelData): normal += NORMALS.up
+			if not below(voxel,voxelData): normal += NORMALS.down
+			if not onleft(voxel,voxelData): normal += NORMALS.left
+			if not onright(voxel,voxelData): normal += NORMALS.right
+			if not infront(voxel,voxelData): normal += NORMALS.front
+			if not behind(voxel,voxelData): normal += NORMALS.back
+			var s = Vector3(s_x, s_y, s_z)
+			n[i][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z] = normal
+		if smoothing > 1:
+			for x_idx in range(m_x - s_x):
+				for y_idx in range(m_y - s_y):
+					for z_idx in range(m_z - s_z):
+						for s_i in range(-max_smoothing, max_smoothing):
+							var fraction = min(1, abs(s_i) - smoothing) * (abs(s_i) / smoothing)
+							var r = Vector3()
+							if s_i + x_idx >= 0 && s_i + x_idx < m_x - s_x:
+								r += n[0][x_idx + s_i][y_idx][z_idx] * fraction
+							if s_i + y_idx >= 0 && s_i + y_idx < m_y - s_y:
+								r += n[0][x_idx][y_idx][z_idx] * fraction
+							if s_i + z_idx >= 0 && s_i + z_idx < m_z - s_z:
+								r += n[0][x_idx][y_idx][z_idx + s_i] * fraction
+							
+							n[1][x_idx][y_idx][z_idx] += r
+		for voxel in chunk.data:
 			st.add_color(voxel.color)
+			var normal = n[1][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z]
 			normal = normal.normalized()
 			st.add_normal(normal)
 			# todo: add multiple bones? weight painted?
@@ -351,7 +395,7 @@ var right = [
 	Vector3( 1.0000, 1.0000, 1.0000),
 ]
 
-var normals = {
+var NORMALS = {
 	'up': Vector3(0, 1, 0),
 	'down': Vector3(0, -1, 0),
 	'left': Vector3(-1, 0, 0),
@@ -361,9 +405,9 @@ var normals = {
 }
 
 #Some staic functions
-func above(cube,array): return array[cube.pos.x][cube.pos.y+1][cube.pos.z]
-func below(cube,array): return array[cube.pos.x][cube.pos.y-1][cube.pos.z]
-func onleft(cube,array): return array[cube.pos.x-1][cube.pos.y][cube.pos.z]
-func onright(cube,array): return array[cube.pos.x+1][cube.pos.y][cube.pos.z]
-func infront(cube,array): return array[cube.pos.x][cube.pos.y][cube.pos.z+1]
-func behind(cube,array): return array[cube.pos.x][cube.pos.y][cube.pos.z-1]
+func above(cube, array): return array[cube.pos.x][cube.pos.y+1][cube.pos.z]
+func below(cube, array): return array[cube.pos.x][cube.pos.y-1][cube.pos.z]
+func onleft(cube, array): return array[cube.pos.x-1][cube.pos.y][cube.pos.z]
+func onright(cube, array): return array[cube.pos.x+1][cube.pos.y][cube.pos.z]
+func infront(cube, array): return array[cube.pos.x][cube.pos.y][cube.pos.z+1]
+func behind(cube, array): return array[cube.pos.x][cube.pos.y][cube.pos.z-1]
