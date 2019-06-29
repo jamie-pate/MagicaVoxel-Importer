@@ -47,7 +47,8 @@ class ImportPlugin extends EditorImportPlugin:
 	func get_import_options(preset):
 		var options = [
 			{'name': 'bone_map', 'default_value': ''},
-			{'name': 'smoothing', 'default_value': 1}
+			{'name': 'smoothing', 'default_value': 1.0,
+				'property_hint': PROPERTY_HINT_RANGE, 'hint_string': '0.0,10.0,0.1'}
 		]
 		#options.append( { "name":"Pack in scene", "default_value":false } )
 		#options.append( { "name":"target_path", "default_value":"" } )

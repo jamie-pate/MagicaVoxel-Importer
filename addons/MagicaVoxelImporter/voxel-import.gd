@@ -211,8 +211,8 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	var m_x = -1000
 	var s_z = 1000
 	var m_z = -1000
+	var s_y = 1000
 	var m_y = -1000
-	var s_y = -1000
 	# todo: separate aabb per chunk? transform using transformnodes above?
 	for chunk in data:
 		for d in chunk.data:
@@ -224,10 +224,11 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			# note: not centering on the y axis, but this is used in the next step
 			if p.y < s_y: s_y = p.y
 			elif p.y > m_y: m_y = p.y
-
+	print([s_x, m_x, s_z, m_z, s_y, m_y])
 	for chunk in data:
 		# create empty 3d arrays as buffers for normal smoothing
-		chunk.normals = [[], []]
+		# TODO: really only need 2 buffers
+		chunk.normals = [[], [], [], []]
 		for n in chunk.normals:
 			for x_ in range(m_x - s_x + 1):
 				var x = []
@@ -245,16 +246,14 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	#Create the mesh
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_POINTS)
-	print(options)
 	for chunk in data:
 		var voxelData = chunk.vox
 		var n = chunk.normals
 		var smoothing = options.smoothing
-		print(range(options.smoothing))
 		var max_smoothing = ceil(smoothing)
 		var i = 0
-		if smoothing <= 1:
-			i = 1
+		if smoothing <= 0:
+			i = 3
 		for voxel in chunk.data:
 			var key = Vector3(voxel.pos.x, voxel.pos.y, voxel.pos.z)
 			var normal = Vector3(0, 0, 0)
@@ -266,24 +265,43 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			if not behind(voxel,voxelData): normal += NORMALS.back
 			var s = Vector3(s_x, s_y, s_z)
 			n[i][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z] = normal
-		if smoothing > 1:
-			for x_idx in range(m_x - s_x):
-				for y_idx in range(m_y - s_y):
-					for z_idx in range(m_z - s_z):
-						for s_i in range(-max_smoothing, max_smoothing):
-							var fraction = min(1, abs(s_i) - smoothing) * (abs(s_i) / smoothing)
-							var r = Vector3()
+		if smoothing > 0:
+			var size = Vector3(m_x - s_x + 1, m_y - s_y + 1, m_z - s_z + 1)
+			print('%s %s voxels x 3 x %s (%s)' % [size, size.x * size.y * size.z , smoothing * 2 + 1, smoothing])
+			for x_idx in range(m_x - s_x + 1):
+				for y_idx in range(m_y - s_y + 1):
+					for z_idx in range(m_z - s_z + 1):
+						var r = Vector3()
+						for s_i in range(-max_smoothing, max_smoothing + 1):
+							var fraction = 1 - float(abs(s_i) - 0.01) / float(smoothing)
+							if x_idx + y_idx + z_idx == 0:
+								print('%s %s' % [s_i, fraction])
 							if s_i + x_idx >= 0 && s_i + x_idx < m_x - s_x:
 								r += n[0][x_idx + s_i][y_idx][z_idx] * fraction
+						n[1][x_idx][y_idx][z_idx] = r
+
+			for x_idx in range(m_x - s_x + 1):
+				for y_idx in range(m_y - s_y + 1):
+					for z_idx in range(m_z - s_z + 1):
+						var r = Vector3()
+						for s_i in range(-max_smoothing, max_smoothing + 1):
+							var fraction = 1 - float(abs(s_i)) / float(smoothing)
 							if s_i + y_idx >= 0 && s_i + y_idx < m_y - s_y:
-								r += n[0][x_idx][y_idx][z_idx] * fraction
+								r += n[1][x_idx][y_idx][z_idx] * fraction
+						n[2][x_idx][y_idx][z_idx] = r
+			for x_idx in range(m_x - s_x + 1):
+				for y_idx in range(m_y - s_y + 1):
+					for z_idx in range(m_z - s_z + 1):
+						var r = Vector3()
+						for s_i in range(-max_smoothing, max_smoothing + 1):
+							var fraction = 1 - float(abs(s_i)) / float(smoothing)
 							if s_i + z_idx >= 0 && s_i + z_idx < m_z - s_z:
-								r += n[0][x_idx][y_idx][z_idx + s_i] * fraction
-							
-							n[1][x_idx][y_idx][z_idx] += r
+								r += n[2][x_idx][y_idx][z_idx + s_i] * fraction
+						n[3][x_idx][y_idx][z_idx] = r
+
 		for voxel in chunk.data:
 			st.add_color(voxel.color)
-			var normal = n[1][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z]
+			var normal = n[3][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z]
 			normal = normal.normalized()
 			st.add_normal(normal)
 			# todo: add multiple bones? weight painted?
