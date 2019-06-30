@@ -268,34 +268,35 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 		if smoothing > 0:
 			var size = Vector3(m_x - s_x + 1, m_y - s_y + 1, m_z - s_z + 1)
 			print('%s %s voxels x 3 x %s (%s)' % [size, size.x * size.y * size.z , smoothing * 2 + 1, smoothing])
-			for x_idx in range(m_x - s_x + 1):
-				for y_idx in range(m_y - s_y + 1):
-					for z_idx in range(m_z - s_z + 1):
+			for x_idx in range(size.x):
+				for y_idx in range(size.y):
+					for z_idx in range(size.z):
 						var r = Vector3()
 						for s_i in range(-max_smoothing, max_smoothing + 1):
-							var fraction = 1 - float(abs(s_i) - 0.01) / float(smoothing)
+							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
 							if x_idx + y_idx + z_idx == 0:
 								print('%s %s' % [s_i, fraction])
-							if s_i + x_idx >= 0 && s_i + x_idx < m_x - s_x:
+							if s_i + x_idx >= 0 && s_i + x_idx < size.x:
 								r += n[0][x_idx + s_i][y_idx][z_idx] * fraction
 						n[1][x_idx][y_idx][z_idx] = r
 
-			for x_idx in range(m_x - s_x + 1):
-				for y_idx in range(m_y - s_y + 1):
-					for z_idx in range(m_z - s_z + 1):
+			for x_idx in range(size.x):
+				for y_idx in range(size.y):
+					for z_idx in range(size.z):
 						var r = Vector3()
 						for s_i in range(-max_smoothing, max_smoothing + 1):
-							var fraction = 1 - float(abs(s_i)) / float(smoothing)
-							if s_i + y_idx >= 0 && s_i + y_idx < m_y - s_y:
-								r += n[1][x_idx][y_idx][z_idx] * fraction
+							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
+							if s_i + y_idx >= 0 && s_i + y_idx < size.y:
+								r += n[1][x_idx][y_idx + s_i][z_idx] * fraction
 						n[2][x_idx][y_idx][z_idx] = r
-			for x_idx in range(m_x - s_x + 1):
-				for y_idx in range(m_y - s_y + 1):
-					for z_idx in range(m_z - s_z + 1):
+
+			for x_idx in range(size.x):
+				for y_idx in range(size.y):
+					for z_idx in range(size.z):
 						var r = Vector3()
 						for s_i in range(-max_smoothing, max_smoothing + 1):
-							var fraction = 1 - float(abs(s_i)) / float(smoothing)
-							if s_i + z_idx >= 0 && s_i + z_idx < m_z - s_z:
+							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
+							if s_i + z_idx >= 0 && s_i + z_idx <size.z:
 								r += n[2][x_idx][y_idx][z_idx + s_i] * fraction
 						n[3][x_idx][y_idx][z_idx] = r
 
