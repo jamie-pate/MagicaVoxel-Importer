@@ -19,7 +19,16 @@ uniform float show_normals : hint_range(0,1);
 varying vec2 dc;
 varying vec2 adc;
 varying vec2 aspect;
+uniform bool sitting;
 
+float sit(float f)
+{
+	if(f>20f)
+	{
+		return -f/5f;
+	}
+	return 2f;
+}
 
 void vertex() {
 	COLOR.rgb = mix( pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)), COLOR.rgb* (1.0 / 12.92), lessThan(COLOR.rgb,vec3(0.04045)) );
@@ -51,11 +60,16 @@ void vertex() {
 	if (show_normals > 0.0) {
 		COLOR = mix(COLOR, vec4(NORMAL, 1.0), show_normals);
 		if (length(NORMAL) == 0.0) {
-			COLOR = vec4(1.0, 0, 1.0, 0)
+			COLOR = vec4(1.0, 0, 1.0, 0);
 		}
 	}
-}
+	if (sitting)
+	{
+			VERTEX.z += doCal(VERTEX.y);
+			VERTEX.z -= 6f;
+	}
 
+}
 void fragment() {
 	vec2 base_uv = UV;
 	ALBEDO = albedo.rgb * COLOR.rgb;
@@ -65,8 +79,8 @@ void fragment() {
 	);
 	float EDGE_SQUASH = 1.5;
 	vec2 edge = abs(POINT_COORD - vec2(0.5)) * 2.0;
-	//edge = (pow(edge.xy, vec2(PARABLOID.x)) + (edge.yx * PARABLOID.y));
-	edge *= adc.yx * aspect.y + abs(adc.x - adc.y) / 2.2;
+	edge = (pow(edge.xy, vec2(PARABLOID.x)) + (edge.yx * PARABLOID.y));
+	//edge *= adc.yx * aspect.y + abs(adc.x - adc.y) / 2.2;
 	/*ALBEDO.b = mod(FRAGCOORD.x, 3.0);//screen_edgy.y;
 	
 	ALBEDO.r = edge.x;
