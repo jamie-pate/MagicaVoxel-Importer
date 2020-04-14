@@ -20,14 +20,16 @@ varying vec2 dc;
 varying vec2 adc;
 varying vec2 aspect;
 uniform bool sitting;
-uniform float waist;
+uniform float waist = 20f;
+uniform float displacement_ratio = 5f;
+
 float sit(float f)
 {
 	if(f>waist)
 	{
-		return -f/5f;
+		return -f/displacement_ratio;
 	}
-	return 2f;
+	return 0f;
 }
 
 void vertex() {
@@ -65,8 +67,7 @@ void vertex() {
 	}
 	if (sitting)
 	{
-			VERTEX.z += sit(VERTEX.y);
-			VERTEX.z -= 6f;
+		VERTEX.z += sit(VERTEX.y);
 	}
 
 }
@@ -79,8 +80,8 @@ void fragment() {
 	);
 	float EDGE_SQUASH = 1.5;
 	vec2 edge = abs(POINT_COORD - vec2(0.5)) * 2.0;
-	edge = (pow(edge.xy, vec2(PARABLOID.x)) + (edge.yx * PARABLOID.y));
-	//edge *= adc.yx * aspect.y + abs(adc.x - adc.y) / 2.2;
+	//edge = (pow(edge.xy, vec2(PARABLOID.x)) + (edge.yx * PARABLOID.y));
+	edge *= adc.yx * aspect.y + abs(adc.x - adc.y) / 2.2;
 	/*ALBEDO.b = mod(FRAGCOORD.x, 3.0);//screen_edgy.y;
 	
 	ALBEDO.r = edge.x;
