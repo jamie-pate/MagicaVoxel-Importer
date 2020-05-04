@@ -31,8 +31,11 @@ func _resized():
 		if viewport:
 			var screen_size = viewport.get_size_override() if viewport.is_size_override_enabled() else viewport.size
 			mat.set_shader_param('screen_size', screen_size)
+			if material_override:
+				material_override.set_shader_param('screen_size', screen_size)
 			if mesh:
 				_set_point_size_deferred(point_size)
+
 
 func _set_point_size(value):
 	point_size = value
