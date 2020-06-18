@@ -51,17 +51,20 @@ func _set_point_size_deferred(value):
 func _set_waist(value):
 	waist = value
 	if mesh:
-		if material_override:
-			material_override.set_shader_param('waist', value)
+		var mat = get_surface_material(0)
+		if mat:
+			mat.set_shader_param('waist', value)
 
 func _set_displacement(value):
 	displacement_ratio = value
 	if mesh:
-		if material_override:
-			material_override.set_shader_param('displacement_ratio', value)
+		var mat = get_surface_material(0)
+		if mat:
+			mat.set_shader_param('displacement_ratio', value)
 
 func _set_sit(value):
 	sitting = value
 	if mesh:
-		if material_override:
-			material_override.set_shader_param('sitting', value)
+		var mat = get_surface_material(0)
+		if mat:
+			mat.set_shader_param("sitting",value)
