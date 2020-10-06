@@ -74,5 +74,4 @@ func _set_sit(value):
 	sitting = value
 	if mesh:
 		for mat in _get_mats():
-			print('sitting ', value)
 			mat.set_shader_param("sitting",value)
