@@ -98,6 +98,9 @@ func vox_arr():
 
 #Gets called when pressing a file gets imported / reimported
 func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+
+	var CHUNK_DBG = false
+	var MESH_DBG = false
 	var file = File.new()
 	var error = file.open( source_path, File.READ )
 	if error != OK:
@@ -121,7 +124,6 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 		var sizez = 0
 		var names = {}
 		var chunkNum = 0
-		var CHUNK_DBG = false
 
 		while file.get_position() < file.get_len():
 			# each chunk has an ID, size and child chunks
@@ -161,8 +163,8 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			elif chunkName == "nTRN":
 				var tfmNode = MVTransformNode.new()
 				tfmNode.init(file)
-				#if CHUNK_DBG:
-				print('nTRN {0}'.format(tfmNode.frames).left(1000))
+				if CHUNK_DBG:
+					print('nTRN {0}'.format(tfmNode.frames).left(1000))
 				if '_name' in tfmNode.attr:
 					names[tfmNode.node_id] = tfmNode.attr._name
 			else:
@@ -224,7 +226,8 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			# note: not centering on the y axis, but this is used in the next step
 			if p.y < s_y: s_y = p.y
 			elif p.y > m_y: m_y = p.y
-	print([s_x, m_x, s_z, m_z, s_y, m_y])
+	if MESH_DBG:
+		print([s_x, m_x, s_z, m_z, s_y, m_y])
 	for chunk in data:
 		# create empty 3d arrays as buffers for normal smoothing
 		# TODO: really only need 2 buffers
@@ -267,15 +270,14 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			n[i][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z] = normal
 		if smoothing > 0:
 			var size = Vector3(m_x - s_x + 1, m_y - s_y + 1, m_z - s_z + 1)
-			print('%s %s voxels x 3 x %s (%s)' % [size, size.x * size.y * size.z , smoothing * 2 + 1, smoothing])
+			if MESH_DBG:
+				print('%s %s voxels x 3 x %s (%s)' % [size, size.x * size.y * size.z , smoothing * 2 + 1, smoothing])
 			for x_idx in range(size.x):
 				for y_idx in range(size.y):
 					for z_idx in range(size.z):
 						var r = Vector3()
 						for s_i in range(-max_smoothing, max_smoothing + 1):
 							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
-							if x_idx + y_idx + z_idx == 0:
-								print('%s %s' % [s_i, fraction])
 							if s_i + x_idx >= 0 && s_i + x_idx < size.x:
 								r += n[0][x_idx + s_i][y_idx][z_idx] * fraction
 						n[1][x_idx][y_idx][z_idx] = r
