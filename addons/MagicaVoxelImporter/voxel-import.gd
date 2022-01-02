@@ -1,7 +1,12 @@
 extends Reference
 const shader = preload('./points.shader')
 
-class MV:
+const MAX_AXIS_SIZE = 256
+const TIME_DBG = false
+
+var _time := 0
+
+class MV extends Reference:
 	# revive a string from the stream
 	func mv_str(file):
 		var size = file.get_32()
@@ -32,7 +37,7 @@ class MV:
 				print('bogus key from mv_str: %s' % key)
 		return result
 
-class MVChunk:
+class MVChunk extends Reference:
 	var id
 	var size
 	var child_count
@@ -47,18 +52,166 @@ class MVChunk:
 		position = file.get_position()
 		#print('id:%s sz:%d cc:%d' % [id, size, child_count])
 
-class MVVoxels:
-	var pos = Vector3(0,0,0)
-	var color
+class MVVoxels extends Reference:
+	var pos := Vector3(0,0,0)
+	var color_idx: int
+	var color: Color
+	var normal := Vector3(0, 0, 0)
+	var neighbour_normals := Vector3(0, 0, 0)
+
 	# contain which chunk we are in so we can find it's name later?
 	var chunkNum = -1
 	var bone
-	func init(file):
+
+	# each voxel starts with x(right), y(up), z(forward), color_idx values
+	# y is up and -z is forward in godot, so we swap those here.
+	func init(file: File):
 		pos.x = file.get_8()
 		pos.z = -file.get_8()
 		pos.y = file.get_8()
 
-		color = file.get_8()
+		color_idx = file.get_8()
+
+	func _to_string():
+		return 'MVVoxels pos:%s color:%s normal:%s chunkNum:%s' % [pos, color, normal, chunkNum]
+
+class VoxData extends Reference:
+	class Vox3 extends Reference:
+		var x := 0
+		var y := 0
+		var z := 0
+
+		func _init(vector := Vector3()):
+			x = int(round(vector.x))
+			y = int(round(vector.y))
+			z = int(round(vector.z))
+
+		func _to_string():
+			return str(Vector3(x, y, z))
+
+		func volume():
+			return x * y * z
+
+		func wrapped(size: Vox3) -> Vox3:
+			var result := Vox3.new()
+			result.x = x
+			result.y = y
+			result.z = z
+			while result.x < 0:
+				result.x += size.x
+			while result.y < 0:
+				result.y += size.y
+			while result.z < 0:
+				result.z += size.z
+			result.x = result.x % size.x
+			result.y = result.y % size.y
+			result.z = result.z % size.z
+			return result
+
+	# always use a dictionary as it's faster?
+	# maybe some dense models may be faster with array?
+	const MAX_ARRAY_VOLUME = 0# 1024 * 1024 * 1024
+
+	const t := PoolIntArray([0, 0, 0, 0, 0, 0])
+	var dict_data := {}
+	var array_data := []
+	var size := Vox3.new()
+	var aabb_start_x := 10000.0
+	var aabb_start_y := 10000.0
+	var aabb_start_z := 10000.0
+	var aabb_end_x := -10000.0
+	var aabb_end_y := -10000.0
+	var aabb_end_z := -10000.0
+	var use_dict := false
+	var reported := 0
+
+	func _init(_size: Vector3):
+		size = Vox3.new(_size)
+		var volume = size.volume()
+		if volume > MAX_ARRAY_VOLUME:
+			use_dict = true
+		else:
+			array_data.resize(volume)
+
+	func _coord_idx(x: int, y: int, z: int) -> int:
+		while x < 0:
+			x += size.x
+		if x > size.x:
+			x = x % size.x
+		while y < 0:
+			y += size.y
+		if y > size.y:
+			y = y % size.y
+		while z < 0:
+			z += size.z
+		if z > size.z:
+			z = z % size.z
+		var idx := x + (y * size.x) + (z * size.x * size.y)
+		if idx < 0:
+			idx = 0
+			printerr('idx < 0! %s' % [[x, y, z]])
+		return idx
+
+	func get_vox(pos: Vector3) -> MVVoxels:
+		# note: don't create vox3 for xyz because it's too slow
+		var start = OS.get_ticks_usec()
+		if !(pos.x >= aabb_start_x && pos.y >= aabb_start_y && pos.z >= aabb_start_z && \
+				pos.x <= aabb_end_x && pos.y <= aabb_end_y && pos.z <= aabb_end_z):
+			t[1] = t[1] + (OS.get_ticks_usec() - start)
+			return null
+		var end = OS.get_ticks_usec()
+		t[1] = t[1] + (end - start)
+		start = end
+		var result
+		if use_dict:
+			result = dict_data.get(pos)
+		else:
+			var x = int(pos.x)
+			var y = int(pos.y)
+			var z = int(pos.z)
+			end = OS.get_ticks_usec()
+			t[0] = t[0] + (end - start)
+			start = end
+
+			var idx := _coord_idx(x, y, z)
+			end = OS.get_ticks_usec()
+			t[2] = t[2] + (end - start)
+			start = end
+			result = array_data[idx]
+		t[3] = t[3] + (OS.get_ticks_usec() - start)
+		return result
+
+	func set_vox(value: MVVoxels) -> void:
+		var pos := value.pos
+
+		if pos.x < aabb_start_x:
+			aabb_start_x = pos.x
+		if pos.y < aabb_start_y:
+			aabb_start_y = pos.y
+		if pos.z < aabb_start_z:
+			aabb_start_z = pos.z
+		if pos.x > aabb_end_x:
+			aabb_end_x = pos.x
+		if pos.y > aabb_end_y:
+			aabb_end_y = pos.y
+		if pos.z > aabb_end_z:
+			aabb_end_z = pos.z
+		if use_dict:
+			dict_data[pos] = value
+		else:
+			# this is the slow part!
+			var x := int(pos.x)
+			var y := int(pos.y)
+			var z := int(pos.z)
+			var idx := _coord_idx(x, y, z)
+			array_data[idx] = value
+
+	# NOTE: values in the result may be null
+	func voxels():
+		if use_dict:
+			return dict_data.values()
+		else:
+			return array_data.duplicate()
 
 class MVTransformNode extends MV:
 	var node_id
@@ -86,19 +239,17 @@ class MVTransformNode extends MV:
 		for i in frame_count:
 			frames.append(mv_dict(file, {'_r': 'int8', '_t': 'int32x3'}))
 
-func vox_arr():
-	#Initialize and populate voxel array
-	var voxelArray = []
-	for x in range(0,128):
-		voxelArray.append([])
-		for y in range(0,128):
-			voxelArray[x].append([])
-			voxelArray[x][y].resize(128)
-	return voxelArray
+
+func time(desc: String):
+	if TIME_DBG:
+		var old_time = _time
+		_time = OS.get_ticks_msec()
+		print('%s %s ms' % [desc, _time - old_time])
 
 #Gets called when pressing a file gets imported / reimported
 func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
-
+	_time = OS.get_ticks_msec()
+	var start_time = _time
 	var CHUNK_DBG = false
 	var MESH_DBG = false
 	var file = File.new()
@@ -116,12 +267,9 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	var magic = PoolByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii()
 
 	var version = file.get_32()
-
 	# a MagicaVoxel .vox file starts with a 'magic' 4 character 'VOX ' identifier
 	if magic == "VOX ":
-		var sizex = 0
-		var sizey = 0
-		var sizez = 0
+		var size := Vector3()
 		var names = {}
 		var chunkNum = 0
 
@@ -133,23 +281,24 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			var chunkName = chunk.id
 			# there are only a few chunks we care about, and they are SIZE, XYZI, TRNG?, RGBA
 			if chunkName == "SIZE":
-				sizex = file.get_32()
-				sizey = file.get_32()
-				sizez = file.get_32()
-
+				size.x = file.get_32()
+				# y is up in vox
+				size.z = file.get_32()
+				# z is backward in vox
+				size.y = file.get_32()
 				file.get_buffer(chunk.size - 4 * 3)
 			elif chunkName == "XYZI":
 				# XYZI contains n voxels
 				var numVoxels = file.get_32()
-				var chunkData = {'data': [], 'vox': vox_arr()}
+				var chunkData = {'data': [], 'vox': VoxData.new(size), 'numVoxels': numVoxels}
 				data.append(chunkData)
-				# each voxel has x, y, z and color index values
+
 				for i in range(0,numVoxels):
 					var mvc = MVVoxels.new()
 					mvc.init(file)
 					mvc.chunkNum = chunkNum
 					chunkData.data.append(mvc)
-					chunkData.vox[mvc.pos.x][mvc.pos.y][mvc.pos.z] = mvc
+					chunkData.vox.set_vox(mvc)
 			elif chunkName == "RGBA":
 				colors = []
 
@@ -196,51 +345,46 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 				var d = chunk.data[i]
 				# use the voxColors array by default, or overrideColor if it is available
 				if colors == null:
-					d.color = Color('#%06x' % voxColors[d.color - 1])
+					d.color = Color('#%06x' % voxColors[d.color_idx - 1])
 				else:
-					d.color = colors[d.color-1]
+					d.color = colors[d.color_idx-1]
 				if d.chunkNum < len(names):
 					var bone_name = names[d.chunkNum]
 					d.bone = bone_map[bone_name]
 	file.close()
-
+	time('%s read chunks' % [source_path])
 	##################
 	#   Create Mesh  #
 	##################
 
-	#Calculate aabb for centering offset
+	# Calculate aabb for centering offset
+	# combine aabb from each voxel chunk
 	var s_x = 1000
 	var m_x = -1000
 	var s_z = 1000
 	var m_z = -1000
 	var s_y = 1000
 	var m_y = -1000
-	# todo: separate aabb per chunk? transform using transformnodes above?
+	# todo: transform using transformnodes above?
 	for chunk in data:
-		for d in chunk.data:
-			var p = d.pos
-			if p.x < s_x: s_x = p.x
-			elif p.x > m_x: m_x = p.x
-			if p.z < s_z: s_z = p.z
-			elif p.z > m_z: m_z = p.z
-			# note: not centering on the y axis, but this is used in the next step
-			if p.y < s_y: s_y = p.y
-			elif p.y > m_y: m_y = p.y
+		var v = chunk.vox
+		if v.aabb_start_x < s_x:
+			s_x = v.aabb_start_x
+		if v.aabb_end_x > m_x:
+			m_x = v.aabb_end_x
+		if v.aabb_start_z < s_z:
+			s_z = v.aabb_start_z
+		if v.aabb_end_z > m_z:
+			m_z = v.aabb_end_z
+		# note: not centering on the y axis, but this is used in the next step
+		if v.aabb_start_y < s_y:
+			s_y = v.aabb_start_y
+		if v.aabb_end_y > m_y:
+			m_y = v.aabb_end_y
 	if MESH_DBG:
-		print([s_x, m_x, s_z, m_z, s_y, m_y])
-	for chunk in data:
-		# create empty 3d arrays as buffers for normal smoothing
-		# TODO: really only need 2 buffers
-		chunk.normals = [[], [], [], []]
-		for n in chunk.normals:
-			for x_ in range(m_x - s_x + 1):
-				var x = []
-				n.append(x)
-				for y_ in range(m_y - s_y + 1):
-					var y = []
-					x.append(y)
-					for z_ in range(m_z - s_z + 1):
-						y.append(Vector3())
+		print('x:%s..%s y:%s..%s, z:%s..%s' % [s_x, m_x, s_y, m_y, s_z, m_z])
+
+	time('center aabb')
 
 	var x_dif = m_x - s_x
 	var z_dif = m_z - s_z
@@ -251,14 +395,11 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	st.begin(Mesh.PRIMITIVE_POINTS)
 	for chunk in data:
 		var voxelData = chunk.vox
-		var n = chunk.normals
 		var smoothing = options.smoothing
 		var max_smoothing = ceil(smoothing)
-		var i = 0
-		if smoothing <= 0:
-			i = 3
-		for voxel in chunk.data:
-			var key = Vector3(voxel.pos.x, voxel.pos.y, voxel.pos.z)
+		for voxel in chunk.vox.voxels():
+			if !voxel:
+				return
 			var normal = Vector3(0, 0, 0)
 			if not above(voxel,voxelData): normal += NORMALS.up
 			if not below(voxel,voxelData): normal += NORMALS.down
@@ -266,45 +407,39 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			if not onright(voxel,voxelData): normal += NORMALS.right
 			if not infront(voxel,voxelData): normal += NORMALS.front
 			if not behind(voxel,voxelData): normal += NORMALS.back
-			var s = Vector3(s_x, s_y, s_z)
-			n[i][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z] = normal
+			voxel.normal = normal
+
+		time('chunk %s normals' % [chunk.data[0].chunkNum])
+		var directions := PoolVector3Array([Vector3.FORWARD, Vector3.RIGHT, Vector3.UP])
 		if smoothing > 0:
-			var size = Vector3(m_x - s_x + 1, m_y - s_y + 1, m_z - s_z + 1)
-			if MESH_DBG:
-				print('%s %s voxels x 3 x %s (%s)' % [size, size.x * size.y * size.z , smoothing * 2 + 1, smoothing])
-			for x_idx in range(size.x):
-				for y_idx in range(size.y):
-					for z_idx in range(size.z):
-						var r = Vector3()
-						for s_i in range(-max_smoothing, max_smoothing + 1):
-							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
-							if s_i + x_idx >= 0 && s_i + x_idx < size.x:
-								r += n[0][x_idx + s_i][y_idx][z_idx] * fraction
-						n[1][x_idx][y_idx][z_idx] = r
+			# pass1, collect primary axes neighbour smoothing levels..
+			for v in chunk.vox.voxels():
+				if v:
+					var r = Vector3()
+					for s_i in range(-max_smoothing, max_smoothing + 1):
+						var fraction = max(0, 1 - float(abs(s_i)) / float(smoothing + 1))
+						for d in directions:
+							var voxel = chunk.vox.get_vox(s_i * d + v.pos)
+							if voxel:
+								r += voxel.normal * fraction
+					v.neighbour_normals = r
+			# pass2, collect smoothed neighbour values
+			for v in chunk.vox.voxels():
+				if v:
+					var r = Vector3()
+					for s_i in range(-max_smoothing, max_smoothing + 1):
+						var fraction = max(0, 1 - float(abs(s_i)) / float(smoothing + 1))
+						for d in directions:
+							var voxel = chunk.vox.get_vox(s_i * d + v.pos)
+							if voxel:
+								r += voxel.neighbour_normals * fraction
+					v.normal = r
 
-			for x_idx in range(size.x):
-				for y_idx in range(size.y):
-					for z_idx in range(size.z):
-						var r = Vector3()
-						for s_i in range(-max_smoothing, max_smoothing + 1):
-							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
-							if s_i + y_idx >= 0 && s_i + y_idx < size.y:
-								r += n[1][x_idx][y_idx + s_i][z_idx] * fraction
-						n[2][x_idx][y_idx][z_idx] = r
-
-			for x_idx in range(size.x):
-				for y_idx in range(size.y):
-					for z_idx in range(size.z):
-						var r = Vector3()
-						for s_i in range(-max_smoothing, max_smoothing + 1):
-							var fraction = 1 - float(abs(s_i)) / float(smoothing + 1)
-							if s_i + z_idx >= 0 && s_i + z_idx <size.z:
-								r += n[2][x_idx][y_idx][z_idx + s_i] * fraction
-						n[3][x_idx][y_idx][z_idx] = r
+		time('chunk %s normal smoothing' % [chunk.data[0].chunkNum])
 
 		for voxel in chunk.data:
 			st.add_color(voxel.color)
-			var normal = n[3][voxel.pos.x - s_x][voxel.pos.y - s_y][voxel.pos.z - s_z]
+			var normal = voxel.normal
 			normal = normal.normalized()
 			st.add_normal(normal)
 			# todo: add multiple bones? weight painted?
@@ -317,6 +452,17 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			for tri in to_draw:
 				st.add_vertex( (tri*0.5)+voxel.pos+dif)
 			"""
+		var sz = chunk.vox.size
+		time('chunk %s geometry %s/%s %s (dict:%s) %s..%s' % [
+			chunk.data[0].chunkNum, chunk.numVoxels, sz.volume(), sz, chunk.vox.use_dict,
+			[chunk.vox.aabb_start_x, chunk.vox.aabb_start_y, chunk.vox.aabb_start_z],
+			[chunk.vox.aabb_end_x, chunk.vox.aabb_end_y, chunk.vox.aabb_end_z]
+			])
+		if TIME_DBG:
+			var USEC_TO_MSEC = 0.001
+			print('t=%s' % [[
+				VoxData.t[0] * USEC_TO_MSEC, VoxData.t[1] * USEC_TO_MSEC, VoxData.t[2] * USEC_TO_MSEC, VoxData.t[3] * USEC_TO_MSEC
+			]])
 	#st.generate_normals()
 
 	var shader_path = self.get_script().get_path().replace('plugin.gd', 'points.shader')
@@ -328,12 +474,16 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	#material.set_flag(material.FLAG_USE_COLOR_ARRAY,true)
 	st.set_material(material)
 	var mesh: ArrayMesh
-
+	time('set material')
 	if old_mesh:
 		old_mesh.surface_remove(0)
 		mesh = st.commit(old_mesh)
 	else:
 		mesh = st.commit()
+	time('commit mesh')
+	_time = start_time
+	time('total')
+	data = null
 	return mesh
 
 #Data
@@ -425,10 +575,10 @@ var NORMALS = {
 	'back': Vector3(0, 0, -1)
 }
 
-#Some staic functions
-func above(cube, array): return array[cube.pos.x][cube.pos.y+1][cube.pos.z]
-func below(cube, array): return array[cube.pos.x][cube.pos.y-1][cube.pos.z]
-func onleft(cube, array): return array[cube.pos.x-1][cube.pos.y][cube.pos.z]
-func onright(cube, array): return array[cube.pos.x+1][cube.pos.y][cube.pos.z]
-func infront(cube, array): return array[cube.pos.x][cube.pos.y][cube.pos.z+1]
-func behind(cube, array): return array[cube.pos.x][cube.pos.y][cube.pos.z-1]
+#Some static functions
+func above(vox, v): return v.get_vox(vox.pos + Vector3(0, 1, 0))
+func below(vox, v): return v.get_vox(vox.pos + Vector3(0, -1, 0))
+func onleft(vox, v): return v.get_vox(vox.pos + Vector3(-1, 0, 0))
+func onright(vox, v): return v.get_vox(vox.pos + Vector3(1, 0, 0))
+func infront(vox, v): return v.get_vox(vox.pos + Vector3(0, 0, 1))
+func behind(vox, v): return v.get_vox(vox.pos + Vector3(0, 0, -1))

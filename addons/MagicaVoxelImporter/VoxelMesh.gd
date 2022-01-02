@@ -8,7 +8,7 @@ export(float) var point_size setget _set_point_size
 export(float) var waist setget _set_waist
 export(float) var displacement_ratio setget _set_displacement
 export(bool) var sitting setget _set_sit
-var _lastmesh
+var _last_mats := []
 
 func _ready():
 	# Called when the node is added to the scene for the first time.
@@ -18,12 +18,16 @@ func _ready():
 		point_size = 24
 	_resized()
 
-func _get_mats():
+
+func _enter_tree():
+	_resized()
+
+func _get_mats() -> Array:
 	var result = []
-	var mat = mesh.surface_get_material(0)
+	var mat = mesh.surface_get_material(0) if mesh && mesh.get_surface_count() else null
 	if mat:
 		result.append(mat)
-	mat = get_surface_material(0)
+	mat = get_surface_material(0) if get_surface_material_count() else null
 	if mat:
 		result.append(mat)
 	mat = material_override
@@ -32,8 +36,17 @@ func _get_mats():
 	return result
 
 func _process(delta):
-	if _lastmesh != mesh:
-		_lastmesh = mesh
+	var mats := _get_mats()
+	var changed := len(mats) != len(_last_mats)
+	if !changed:
+		for i in len(mats):
+			if mats[i] != _last_mats[i].get_ref():
+				changed = true
+				break
+	if changed:
+		_last_mats = []
+		for m in mats:
+			_last_mats.append(weakref(m))
 		call_deferred('_resized')
 		call_deferred('_set_point_size_deferred', point_size)
 
