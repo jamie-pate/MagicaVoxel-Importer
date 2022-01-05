@@ -19,6 +19,8 @@ uniform bool fast;
 uniform bool sitting;
 uniform float waist = 20f;
 uniform float displacement_ratio = 5f;
+// increase lod bias to remove more voxels closer to the camera
+uniform float lod_bias = 1.0;
 
 float sit(float f)
 {
@@ -51,11 +53,7 @@ void vertex() {
 		vec2 adc = abs(proj.xy);
 		vec2 vp_half = VIEWPORT_SIZE * 0.5;
 
-		// hack to enlarge near voxels so they touch their neighbours at extreme angles
-		//float near_scale = (1.0 - tl.z) * 10.0;
 		voxel_size = vec2(1.0) * point_size * VIEWPORT_SIZE.y * 0.75 / sc;
-		//COLOR.rgb = sc > 0.5 ? vec3(1.0) : vec3(0.0);
-		//voxel_size = vec2(1.0) * (1.0/ sc) * VIEWPORT_SIZE.y * 0.075 - vec2(1.0);
 	} else {
 		vec3 voxel_start = VERTEX - half_voxel;
 		vec3 voxel_end = VERTEX + half_voxel;
@@ -104,22 +102,25 @@ void vertex() {
 		vec2 edge_boost = max(vec2(0.0), abs_display_coord - edge) * close;
 		voxel_size += edge_boost * 0.1;
 		voxel_size *= vp_half;
-		if (voxel_size.x - voxel.z > 1.0 && voxel_size.y - voxel.z > 1.0) {
-			voxel_size -= voxel.z;
-		}
 	}
 	// screen door transparency if the voxel size is too small, reduces depth buffer overwrites
 	// which improves performance a lot
 	float mvs = max(voxel_size.x, voxel_size.y);
-	if (mvs < 1.0) {
-		mvs = ceil(1.0 / mvs);
-		if (mod(round(VERTEX.x), mvs) > 0.0 ||
-			mod(round(VERTEX.y), mvs) > 0.0 ||
-			mod(round(VERTEX.z), mvs) > 0.0) {
-				voxel_size = vec2(0.0);
-			}
+	// lod_bias allows control over the screendoor effect. 2.0 will be twice as early, 0.0 will disable it.
+	if (mvs < lod_bias) {
+		// each level of reduction will produce even fewer voxels
+		float reduction = ceil(lod_bias / mvs);
+
+		if (
+			mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y + 1.0, reduction) >= 1.0 && mod(VERTEX.z, reduction) >= 1.0 ||
+			mod(VERTEX.x + 1.0, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z, reduction) >= 1.0 ||
+			mod(VERTEX.x + 1.0, reduction) >= 1.0 && mod(VERTEX.y + 1.0, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0 ||
+			mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0
+		) {
+			voxel_size = vec2(0.0);
+		}
 	}
-	POINT_SIZE = max(voxel_size.x, voxel_size.y) + 2.0;
+	POINT_SIZE = max(voxel_size.x, voxel_size.y);
 
 	if (show_normals > 0.0) {
 		COLOR = mix(COLOR, vec4(NORMAL, 1.0), show_normals);
