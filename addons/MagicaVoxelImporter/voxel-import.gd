@@ -15,26 +15,12 @@ class MV extends Reference:
 		return buff.get_string_from_utf8()
 
 	# revive a dict from the stream
-	func mv_dict(file, unpack):
+	func mv_dict(file: File):
 		var size = file.get_32()
 		var result = {}
 		for i in size:
-			var key = mv_str(file)
-			if key in unpack:
-				match unpack[key]:
-					's':
-						result[key] = mv_str(file)
-					'int8':
-						result[key] = file.get_8()
-					'int32':
-						result[key] = file.get_32()
-					'int32x3':
-						result[key] = Vector3(file.get_8(), file.get_8(), file.get_8())
-					_:
-						print('Couldn\'t unpack key %s' % key)
-						assert(false)
-			else:
-				print('bogus key from mv_str: %s' % key)
+			# dict values are always strings...
+			result[mv_str(file)] = mv_str(file)
 		return result
 
 class MVChunk extends Reference:
@@ -61,7 +47,6 @@ class MVVoxels extends Reference:
 
 	# contain which chunk we are in so we can find it's name later?
 	var chunkNum = -1
-	var bone
 
 	# each voxel starts with x(right), y(up), z(forward), color_idx values
 	# y is up and -z is forward in godot, so we swap those here.
@@ -74,6 +59,7 @@ class MVVoxels extends Reference:
 
 	func _to_string():
 		return 'MVVoxels pos:%s color:%s normal:%s chunkNum:%s' % [pos, color, normal, chunkNum]
+
 
 class VoxData extends Reference:
 	class Vox3 extends Reference:
@@ -116,6 +102,7 @@ class VoxData extends Reference:
 	var dict_data := {}
 	var array_data := []
 	var size := Vox3.new()
+	# extents are separate properties because even 2 vector3s was slower!
 	var aabb_start_x := 10000.0
 	var aabb_start_y := 10000.0
 	var aabb_start_z := 10000.0
@@ -213,32 +200,128 @@ class VoxData extends Reference:
 		else:
 			return array_data.duplicate()
 
-class MVTransformNode extends MV:
-	var node_id
-	var attr
-	var child_node_id
-	var reserved_id
-	var layer_id
-	var frame_count
-	var frames
+	# align the center to match the way the center is calculated in mv
+	func center():
+		var start = Vector3(aabb_start_x, aabb_start_y, aabb_start_z)
+		var size = Vector3(aabb_end_x - aabb_start_x, aabb_end_y - aabb_start_y, aabb_end_z - aabb_start_z) + Vector3.ONE
+		var half = (size * 0.5).ceil()
+		var center = half + start
+
+		# move it all up 0.5 voxels to center each voxel's origin
+		return center - Vector3.ONE * 0.5
+
+class MVGroupNode extends MV:
+	var node_id: int
+	var attr := {}
+	var child_count: int
+	var child_ids := PoolIntArray()
+	var children := []
+
+	func _to_string():
+		return 'group %s children: %s' % [node_id, child_ids]
 
 	func init(file):
 		node_id = file.get_32()
-		attr = mv_dict(file, {
-			'_name': 's',
-			# NOTE: not sure if this conversion for `_hidden`
-			# is correct since the docs just say 1/0
-			# '_hidden': 'int32',
-		})
+		attr = mv_dict(file)
+		child_count = file.get_32()
+		for i in child_count:
+			child_ids.append(file.get_32())
+
+class MVShapeNode extends MV:
+	var node_id: int
+	var attr := {}
+	var model_count: int
+	var model_data := []
+	var models := []
+
+	func _to_string():
+		return 'shape %s models: %s' % [node_id, model_data]
+
+	func init(file):
+		node_id = file.get_32()
+		attr = mv_dict(file)
+		model_count = file.get_32()
+		for i in model_count:
+			model_data.append({
+				model_id=file.get_32(),
+				attributes=mv_dict(file)
+			})
+
+class MVTransformNode extends MV:
+	var node_id
+	var name: String
+	var attr
+	var child_node_id
+	var child #MVGroupNode | MVShapeNode
+	var reserved_id
+	var layer_id
+	var frame_count
+	var frames: Array
+	var origin := Vector3()
+	var basis := Basis()
+
+	func _to_string():
+		return 'transform %s child: %s origin: %s basis: %s' % [
+			node_id,
+			child_node_id,
+			origin,
+			basis
+		]
+
+	func init(file):
+		node_id = file.get_32()
+		attr = mv_dict(file)
+		# '_name', _hidden '0'/'1'
+		name = attr._name if '_name' in attr else ''
 		child_node_id = file.get_32()
 		reserved_id = file.get_32()
 		layer_id = file.get_32()
 		frame_count = file.get_32()
 		frames = []
+		if frame_count != 1:
+			printerr('Unsupported frame count for transform: %s' % [frame_count])
 		assert(frame_count == 1)
 		for i in frame_count:
-			frames.append(mv_dict(file, {'_r': 'int8', '_t': 'int32x3'}))
+			# {'_r': 'int8?', '_t': '00 00 33', '_f': '1234'
+			var frame = mv_dict(file)
+			frames.append(frame)
+			if '_r' in frame:
+				basis = mv_rot_to_basis(int(frame._r))
+			if '_t' in frame:
+				var o = frame._t.split(' ')
+				if len(o) == 3:
+					# Z is 'up' in magicavoxel
+					origin = Vector3(int(o[0]), int(o[2]), int(o[1]))
+				else:
+					printerr('Invalid _t translation: %s' % [frame._t])
 
+	func mv_rot_to_basis(byte: int):
+		# so stupidly complicated... also Z is 'up'
+		var vectors = [Vector3(1, 0, 0), Vector3(0, 0, 1),  Vector3(0, 1, 0)]
+		var row_idx = [byte & 3, (byte >> 2) & 3]
+		# 3rd index is whatever column is not used in 1st and 2nd
+		row_idx.append(3 ^ (row_idx[0] | row_idx[1]))
+		var rows = []
+		for i in row_idx:
+			rows.append(vectors[i])
+		var signs = [
+			1 if (byte >> 4) & 1 else -1,
+			1 if (byte >> 5) & -1 else 1,
+			1 if (byte >> 6) & -1 else 1
+		]
+		# swap rows due to XZY order?
+		var result := Basis(
+			rows[0] * signs[0],
+			rows[2] * signs[2],
+			rows[1] * signs[1]
+		);
+		print('rot_to_basis %s > %s > %s > %s' % [row_idx, rows, signs, result])
+		return result
+
+class MVModel extends Reference:
+	var id: int
+	var size: Vector3
+	var vox: VoxData
 
 func time(desc: String):
 	if TIME_DBG:
@@ -247,11 +330,13 @@ func time(desc: String):
 		print('%s %s ms' % [desc, _time - old_time])
 
 #Gets called when pressing a file gets imported / reimported
-func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+	print_debug('Import %s' % [source_path])
 	_time = OS.get_ticks_msec()
 	var start_time = _time
 	var CHUNK_DBG = false
 	var MESH_DBG = false
+	var BONE_DBG = true
 	var file = File.new()
 	var error = file.open( source_path, File.READ )
 	if error != OK:
@@ -263,6 +348,12 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	##################
 	var colors = null
 	var data = []
+	var tfm := {}
+	var nodes := {}
+	var groups := {}
+	var shapes := {}
+	var models := []
+	var graph: MVTransformNode = null
 	#var derp = PoolByteArray(file.get_8()).get
 	var magic = PoolByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii()
 
@@ -299,6 +390,11 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 					mvc.chunkNum = chunkNum
 					chunkData.data.append(mvc)
 					chunkData.vox.set_vox(mvc)
+				var model = MVModel.new()
+				model.vox = chunkData.vox
+				model.size = size
+				model.id = len(models)
+				models.append(model)
 			elif chunkName == "RGBA":
 				colors = []
 
@@ -316,6 +412,18 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 					print('nTRN {0}'.format(tfmNode.frames).left(1000))
 				if '_name' in tfmNode.attr:
 					names[tfmNode.node_id] = tfmNode.attr._name
+				tfm[tfmNode.node_id] = tfmNode
+				nodes[tfmNode.node_id] = tfmNode
+			elif chunkName == "nGRP":
+				var grp = MVGroupNode.new()
+				grp.init(file)
+				groups[grp.node_id] = grp
+				nodes[grp.node_id] = grp
+			elif chunkName == "nSHP":
+				var shp = MVShapeNode.new()
+				shp.init(file)
+				shapes[shp.node_id] = shp
+				nodes[shp.node_id] = shp
 			else:
 				var buff = file.get_buffer(chunk.size)  # read any excess bytes
 				if !(chunkName in ['MATL', 'rOBJ']) and chunkName and CHUNK_DBG:
@@ -334,11 +442,7 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 			chunkNum += 1
 		if data.size() == 0: return data #failed to read any valid voxel data
 
-		var bone_map = {}
-		for name_id in options.bone_map.split(','):
-			var parts = name_id.split('=')
-			if len(parts) == 2:
-				bone_map[parts[0]] = parts[1]
+
 		# now push the voxel data into our voxel chunk structure
 		for chunk in data:
 			for i in range(0, chunk.data.size()):
@@ -348,49 +452,59 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 					d.color = Color('#%06x' % voxColors[d.color_idx - 1])
 				else:
 					d.color = colors[d.color_idx-1]
-				if d.chunkNum < len(names):
-					var bone_name = names[d.chunkNum]
-					d.bone = bone_map[bone_name]
+
 	file.close()
 	time('%s read chunks' % [source_path])
+
+	if len(models) > 1:
+		printerr('Multiple models not supported')
+
+
 	##################
 	#   Create Mesh  #
 	##################
+	var transform := Transform()
+	var auto_center = 'origin' in options && options.origin != 1
+	if auto_center:
+		# Calculate aabb for centering offset
+		# combine aabb from each voxel chunk
+		var s_x = 1000
+		var m_x = -1000
+		var s_z = 1000
+		var m_z = -1000
+		var s_y = 1000
+		var m_y = -1000
+		# todo: transform using transformnodes above?
+		for chunk in data:
+			var v = chunk.vox
+			if v.aabb_start_x < s_x:
+				s_x = v.aabb_start_x
+			if v.aabb_end_x > m_x:
+				m_x = v.aabb_end_x
+			if v.aabb_start_z < s_z:
+				s_z = v.aabb_start_z
+			if v.aabb_end_z > m_z:
+				m_z = v.aabb_end_z
+			# note: not centering on the y axis, but this is used in the next step
+			if v.aabb_start_y < s_y:
+				s_y = v.aabb_start_y
+			if v.aabb_end_y > m_y:
+				m_y = v.aabb_end_y
+		if MESH_DBG:
+			print('x:%s..%s y:%s..%s, z:%s..%s' % [s_x, m_x, s_y, m_y, s_z, m_z])
 
-	# Calculate aabb for centering offset
-	# combine aabb from each voxel chunk
-	var s_x = 1000
-	var m_x = -1000
-	var s_z = 1000
-	var m_z = -1000
-	var s_y = 1000
-	var m_y = -1000
-	# todo: transform using transformnodes above?
-	for chunk in data:
-		var v = chunk.vox
-		if v.aabb_start_x < s_x:
-			s_x = v.aabb_start_x
-		if v.aabb_end_x > m_x:
-			m_x = v.aabb_end_x
-		if v.aabb_start_z < s_z:
-			s_z = v.aabb_start_z
-		if v.aabb_end_z > m_z:
-			m_z = v.aabb_end_z
-		# note: not centering on the y axis, but this is used in the next step
-		if v.aabb_start_y < s_y:
-			s_y = v.aabb_start_y
-		if v.aabb_end_y > m_y:
-			m_y = v.aabb_end_y
-	if MESH_DBG:
-		print('x:%s..%s y:%s..%s, z:%s..%s' % [s_x, m_x, s_y, m_y, s_z, m_z])
 
-	time('center aabb')
+		var x_dif = m_x - s_x
+		var z_dif = m_z - s_z
+		transform.origin = Vector3(-s_x-x_dif/2.0,0,-s_z-z_dif/2.0)
+	else:
+		var revelant_transforms = find_relevant_transforms(tfm[0], tfm, nodes, groups, shapes, models, 0)
+		for t in revelant_transforms:
+			transform *= Transform(t.basis, Vector3()) * Transform(Basis(), t.origin)
 
-	var x_dif = m_x - s_x
-	var z_dif = m_z - s_z
-	var dif = Vector3(-s_x-x_dif/2.0,0,-s_z-z_dif/2.0)
-
-	#Create the mesh
+	time('set origin')
+	# Create the mesh
+	var root_scale := float(options.root_scale) if 'root_scale' in options else 1.0
 	var st = SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_POINTS)
 	for chunk in data:
@@ -436,18 +550,26 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 					v.normal = r
 
 		time('chunk %s normal smoothing' % [chunk.data[0].chunkNum])
-
+		var b = 0
+		var bones := options.bones as PoolIntArray if 'bones' in options and options.bones is PoolIntArray else PoolIntArray()
+		var weights := options.weights as PoolRealArray if 'weights' in options and options.weights is PoolRealArray else PoolRealArray()
+		if BONE_DBG:
+			print('bones: %s weights: %s' % [len(bones), len(weights)])
+		var weights_sz = ArrayMesh.ARRAY_WEIGHTS_SIZE
+		var center = Transform(Basis(), -chunk.vox.center())
+		var center_tfm = transform * center
 		for voxel in chunk.data:
 			st.add_color(voxel.color)
 			var normal = voxel.normal
 			normal = normal.normalized()
 			st.add_normal(normal)
 			# todo: add multiple bones? weight painted?
-			if voxel.bone:
-				st.add_bones([voxel.bone, 0, 0, 0])
-				st.add_weights([1, 0, 0, 0])
+			if bones && weights && len(bones) >= b + weights_sz && len(weights) >= b + weights_sz:
+				st.add_bones(PoolIntArray([bones[b], bones[b + 1], bones[b + 2], bones[b + 3]]))
+				st.add_weights([weights[b], weights[b + 1], weights[b + 2], weights[b + 3]])
+				b += ArrayMesh.ARRAY_WEIGHTS_SIZE
 			#st.add_tangent(normal.normalized())
-			st.add_vertex(voxel.pos + dif)
+			st.add_vertex((center_tfm.xform(voxel.pos)) * root_scale)
 			"""
 			for tri in to_draw:
 				st.add_vertex( (tri*0.5)+voxel.pos+dif)
@@ -468,9 +590,8 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 	var shader_path = self.get_script().get_path().replace('plugin.gd', 'points.shader')
 	var material = ShaderMaterial.new()
 	material.shader = shader
-	material.set_shader_param('screen_size', 1024)
-	material.set_shader_param('point_size', 20)
 	material.set_shader_param('albedo', Color(1, 1, 1))
+	material.set_shader_param('root_scale', root_scale)
 	#material.set_flag(material.FLAG_USE_COLOR_ARRAY,true)
 	st.set_material(material)
 	var mesh: ArrayMesh
@@ -480,11 +601,43 @@ func load_vox( source_path, options={bone_map=''}, platforms=null, gen_files=nul
 		mesh = st.commit(old_mesh)
 	else:
 		mesh = st.commit()
+
+	mesh.set_meta('root_scale', root_scale)
 	time('commit mesh')
 	_time = start_time
 	time('total')
 	data = null
 	return mesh
+
+
+func find_relevant_transforms(root: MVTransformNode, tfm: Dictionary, nodes: Dictionary, groups: Dictionary, shapes: Dictionary, models: Array, model_id: int):
+	# shapes indexed by model
+	var model_owners := {}
+	# nodes indexed by their child node_ids
+	var node_owners := {}
+	# build node graph
+	for s in shapes:
+		for m in shapes[s].model_data:
+			shapes[s].models.append(models[m.model_id])
+			model_owners[m.model_id] = shapes[s]
+	for t in tfm:
+		tfm[t].child = nodes[tfm[t].child_node_id]
+		node_owners[tfm[t].child_node_id] = tfm[t]
+	for g in groups:
+		for cid in groups[g].child_ids:
+			node_owners[cid] = groups[g]
+			groups[g].children.append(nodes[cid])
+	var result := []
+	# walk up the node graph
+	var p = model_owners[model_id]
+	while p:
+		if p is MVTransformNode:
+			result.append(p)
+		p = node_owners[p.node_id] if p.node_id in node_owners else null
+	result.invert()
+	return result
+
+
 
 #Data
 var voxColors = [
