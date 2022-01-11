@@ -290,8 +290,8 @@ class MVTransformNode extends MV:
 			if '_t' in frame:
 				var o = frame._t.split(' ')
 				if len(o) == 3:
-					# Z is 'up' in magicavoxel
-					origin = Vector3(int(o[0]), int(o[2]), int(o[1]))
+					# Z is 'up' in magicavoxel, forward y is negative
+					origin = Vector3(int(o[0]), int(o[2]), -int(o[1]))
 				else:
 					printerr('Invalid _t translation: %s' % [frame._t])
 
