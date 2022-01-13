@@ -20,3 +20,15 @@ names to each voxel and re-import with bones/weights
 
 See the readme at https://github.com/jamie-pate/govox for examples and details.
 
+## Utilities
+
+`scale_obj.js`: Scales the vertices in an obj file. Useful when uploading to e.g. mixamo since the obj scale is different.
+
+## Shader Parameters
+
+The voxel shader has these important parameters as well as some of the regular spatial material parameters:
+
+* `show_normals`: 0..1 Sets the mix of normal color that will be drawn. Useful for checking the normal smoothing.
+* `show_bone_weights`: 0..1 Sets the mix of bone weight color that will be drawn. Requires `Copy Bones To Uv` to be set during import.
+* `root_scale`: Voxel size for the imported model. Must match the `root_scale` used during import
+* `lod_bias`: When to start skipping voxels for performance based on the voxel size on the screen. 1.0 will skip voxels once they overlap. 2.0 will skip twice as early, 0.5 will draw voxels twice as small, etc.

@@ -204,7 +204,9 @@ class VoxData extends Reference:
 	func center():
 		var start = Vector3(aabb_start_x, aabb_start_y, aabb_start_z)
 		var size = Vector3(aabb_end_x - aabb_start_x, aabb_end_y - aabb_start_y, aabb_end_z - aabb_start_z) + Vector3.ONE
-		var half = (size * 0.5).ceil()
+		# mv calculates it's Y in the opposite direction
+		# so we need to flip godot Z before using floor() and then flip it back
+		var half = (size * Vector3(0.5, 0.5, -0.5)).floor() * Vector3(1, 1, -1)
 		var center = half + start
 
 		# move it all up 0.5 voxels to center each voxel's origin
@@ -288,6 +290,7 @@ class MVTransformNode extends MV:
 			if '_r' in frame:
 				basis = mv_rot_to_basis(int(frame._r))
 			if '_t' in frame:
+
 				var o = frame._t.split(' ')
 				if len(o) == 3:
 					# Z is 'up' in magicavoxel, forward y is negative
@@ -553,6 +556,13 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 		var b = 0
 		var bones := options.bones as PoolIntArray if 'bones' in options and options.bones is PoolIntArray else PoolIntArray()
 		var weights := options.weights as PoolRealArray if 'weights' in options and options.weights is PoolRealArray else PoolRealArray()
+
+		var max_bone := 0
+		var bone_colors := PoolColorArray()
+		if 'copy_bones_to_uv' in options && options.copy_bones_to_uv:
+			for bone_id in bones:
+				max_bone = bone_id if bone_id > max_bone else max_bone
+			bone_colors = _gen_colors(max_bone)
 		if BONE_DBG:
 			print('bones: %s weights: %s' % [len(bones), len(weights)])
 		var weights_sz = ArrayMesh.ARRAY_WEIGHTS_SIZE
@@ -563,11 +573,18 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 			var normal = voxel.normal
 			normal = normal.normalized()
 			st.add_normal(normal)
-			# todo: add multiple bones? weight painted?
+
 			if bones && weights && len(bones) >= b + weights_sz && len(weights) >= b + weights_sz:
+				if 'copy_bones_to_uv' in options && options.copy_bones_to_uv:
+					var bc := Color()
+					for i in 4:
+						bc += bone_colors[bones[b + i] % len(bone_colors)] * weights[b + i]
+					st.add_uv(Vector2(bc.r, bc.g))
+					st.add_uv2(Vector2(bc.b, 1.0))
 				st.add_bones(PoolIntArray([bones[b], bones[b + 1], bones[b + 2], bones[b + 3]]))
 				st.add_weights([weights[b], weights[b + 1], weights[b + 2], weights[b + 3]])
 				b += ArrayMesh.ARRAY_WEIGHTS_SIZE
+
 			#st.add_tangent(normal.normalized())
 			st.add_vertex((center_tfm.xform(voxel.pos)) * root_scale)
 			"""
@@ -609,6 +626,19 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 	data = null
 	return mesh
 
+func _gen_colors(count: int) -> PoolColorArray:
+	var result := PoolColorArray()
+	var h_repeat := 3.0
+	var h_repeat_half := h_repeat * 0.5
+	for i in count:
+		var h := _fract(float(i) / float(count) * h_repeat)
+		var s := floor(float(i) / float(count) * h_repeat_half) / h_repeat_half * 0.5 + 0.5
+		var v := floor(float(i) / float(count) * 2.0) / 2.0 * 0.5 + 0.5
+		result.append(Color.from_hsv(h, s , v))
+	return result
+
+func _fract(v: float) -> float:
+	return v - floor(v)
 
 func find_relevant_transforms(root: MVTransformNode, tfm: Dictionary, nodes: Dictionary, groups: Dictionary, shapes: Dictionary, models: Array, model_id: int):
 	# shapes indexed by model
