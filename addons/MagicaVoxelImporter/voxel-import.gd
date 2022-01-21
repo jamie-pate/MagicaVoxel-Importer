@@ -488,7 +488,6 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 				s_z = v.aabb_start_z
 			if v.aabb_end_z > m_z:
 				m_z = v.aabb_end_z
-			# note: not centering on the y axis, but this is used in the next step
 			if v.aabb_start_y < s_y:
 				s_y = v.aabb_start_y
 			if v.aabb_end_y > m_y:
@@ -496,10 +495,10 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 		if MESH_DBG:
 			print('x:%s..%s y:%s..%s, z:%s..%s' % [s_x, m_x, s_y, m_y, s_z, m_z])
 
-
-		var x_dif = m_x - s_x
-		var z_dif = m_z - s_z
-		transform.origin = Vector3(-s_x-x_dif/2.0,0,-s_z-z_dif/2.0)
+		# offset so the bottom is at 0
+		var y_dif = m_y - s_y
+		var y_half = float(y_dif) * 0.5
+		transform.origin = Vector3(0, ceil(y_half), 0)
 	else:
 		var revelant_transforms = find_relevant_transforms(tfm[0], tfm, nodes, groups, shapes, models, 0)
 		for t in revelant_transforms:
