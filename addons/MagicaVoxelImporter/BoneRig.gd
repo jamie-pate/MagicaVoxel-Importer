@@ -362,7 +362,7 @@ func re_import():
 			return
 		var bc: Control
 		for c in get_tree().root.get_node('EditorNode').get_children():
-			if c is EditorInterface:
+			if c.is_class('EditorInterface'):
 				c.edit_resource(mesh)
 				c.inspect_object(self)
 				bc = c.get_base_control()
