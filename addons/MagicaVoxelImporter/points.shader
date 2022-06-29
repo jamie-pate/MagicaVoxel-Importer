@@ -14,11 +14,11 @@ uniform float show_normals : hint_range(0, 1);
 // This only works if the mesh was imported with "Copy Bones to UV"
 uniform float show_bone_weights : hint_range(0, 1);
 varying vec2 voxel_size;
-uniform float root_scale = 1.0f;
+uniform float root_scale = 1.0;
 uniform bool fast;
 uniform bool sitting;
-uniform float waist = 20f;
-uniform float displacement_ratio = 5f;
+uniform float waist = 20.0;
+uniform float displacement_ratio = 5.0;
 // increase lod bias to remove more voxels closer to the camera
 uniform float lod_bias = 1.0;
 // worst case lod reduction
@@ -32,7 +32,7 @@ float sit(float f)
 	{
 		return -f/displacement_ratio;
 	}
-	return 0f;
+	return 0.0;
 }
 
 void vertex() {
