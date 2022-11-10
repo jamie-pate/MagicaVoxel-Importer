@@ -16,9 +16,8 @@ uniform float show_bone_weights : hint_range(0, 1);
 varying vec2 voxel_size;
 uniform float root_scale = 1.0;
 uniform bool fast;
-uniform bool sitting;
-uniform float waist = 20.0;
-uniform float displacement_ratio = 5.0;
+uniform bool render_head = true;
+uniform float neck_height = 40.0;
 // increase lod bias to remove more voxels closer to the camera
 uniform float lod_bias = 1.0;
 // worst case lod reduction
@@ -26,19 +25,11 @@ uniform float lod_bias = 1.0;
 // limiting this is somehow faster than allowing the whole mesh to be discarded.
 uniform float lod_worst = 5.0;
 
-float sit(float f)
-{
-	if(f>waist)
-	{
-		return -f/displacement_ratio;
-	}
-	return 0.0;
-}
-
 void vertex() {
-	if (sitting)
+	if (!render_head && VERTEX.y > neck_height)
 	{
-		VERTEX.z += sit(VERTEX.y);
+		voxel_size = vec2(0.0);
+		return;
 	}
 	COLOR.rgb = mix( pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)), COLOR.rgb* (1.0 / 12.92), lessThan(COLOR.rgb,vec3(0.04045)) );
 	float max_screen_size = max(VIEWPORT_SIZE.x, VIEWPORT_SIZE.y);

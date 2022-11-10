@@ -1,9 +1,8 @@
 tool
 extends MeshInstance
 
-export(float) var waist setget _set_waist
-export(float) var displacement_ratio setget _set_displacement
-export(bool) var sitting setget _set_sit
+export(float) var neck_height setget _set_neck_height
+export(bool) var render_head setget _set_render_head
 
 
 func _get_mats() -> Array:
@@ -20,20 +19,14 @@ func _get_mats() -> Array:
 	return result
 
 
-func _set_waist(value):
-	waist = value
+func _set_neck_height(value):
+	neck_height = value
 	if mesh:
 		for mat in _get_mats():
-			mat.set_shader_param('waist', value)
+			mat.set_shader_param('neck_height', value)
 
-func _set_displacement(value):
-	displacement_ratio = value
+func _set_render_head(value):
+	render_head = value
 	if mesh:
 		for mat in _get_mats():
-			mat.set_shader_param('displacement_ratio', value)
-
-func _set_sit(value):
-	sitting = value
-	if mesh:
-		for mat in _get_mats():
-			mat.set_shader_param("sitting",value)
+			mat.set_shader_param("render_head",value)
