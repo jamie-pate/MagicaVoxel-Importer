@@ -18,12 +18,42 @@ uniform float root_scale = 1.0;
 uniform bool fast;
 uniform bool render_head = true;
 uniform float neck_height = 40.0;
+uniform float phase_shift: hint_range(0, 1) = 0.0;
 // increase lod bias to remove more voxels closer to the camera
 uniform float lod_bias = 1.0;
 // worst case lod reduction
 // 5.0 = at most discard 4/5 voxels on each axis.
 // limiting this is somehow faster than allowing the whole mesh to be discarded.
 uniform float lod_worst = 5.0;
+// multiply a uint by this number to get a range from 0 .. 2.0
+const float MAX_UINT_INV_2 = 2.0 / float(~0u);
+const float PHASE_TRANSLATE = 0.01;
+const float PHASE_SHRINK = 0.25;
+
+uint pcg_hash(uint input) {
+	// https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
+    uint state = input * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+// Add amount of randomness to a value, plus or minus amount
+float phase_shift_component(float seed, float value, float amount) {
+	uint bits = floatBitsToUint(seed);
+	bits = pcg_hash(bits);
+	float r = float(bits) * MAX_UINT_INV_2;
+	r -= 1.0;
+	return value + r * amount;
+}
+
+vec3 phase_shift_vertex(vec3 value, float amount) {
+	return vec3(
+		phase_shift_component(value.x + value.z + amount, value.x, amount),
+		phase_shift_component(value.y + value.x + amount, value.y, amount),
+		phase_shift_component(value.z + value.y + amount, value.z, amount)
+	);
+}
+
 
 void vertex() {
 	if (!render_head && VERTEX.y > neck_height) {
@@ -113,7 +143,12 @@ void vertex() {
 				mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0
 			) {
 				voxel_size = vec2(0.0);
+const uint MAX_UINT = ~0u;
 			}
+		}
+		if (phase_shift > 0.0) {
+			VERTEX = phase_shift_vertex(VERTEX, phase_shift * voxel_size.x * PHASE_TRANSLATE);
+			voxel_size *= 1.0 - phase_shift * (1.0 - PHASE_SHRINK);
 		}
 		POINT_SIZE = max(voxel_size.x, voxel_size.y);
 
