@@ -26,10 +26,13 @@ uniform float lod_bias = 1.0;
 // limiting this is somehow faster than allowing the whole mesh to be discarded.
 uniform float lod_worst = 5.0;
 // multiply a uint by this number to get a range from 0 .. 2.0
+// #ifndef GLES3
 const float MAX_UINT_INV_2 = 2.0 / float(~0u);
+// #endif
 const float PHASE_TRANSLATE = 0.01;
 const float PHASE_SHRINK = 0.25;
 
+// #ifndef GLES3
 uint pcg_hash(uint input) {
 	// https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
     uint state = input * 747796405u + 2891336453u;
@@ -53,7 +56,7 @@ vec3 phase_shift_vertex(vec3 value, float amount) {
 		phase_shift_component(value.z + value.y + amount, value.z, amount)
 	);
 }
-
+// #endif
 
 void vertex() {
 	if (!render_head && VERTEX.y > neck_height) {
@@ -143,13 +146,14 @@ void vertex() {
 				mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0
 			) {
 				voxel_size = vec2(0.0);
-const uint MAX_UINT = ~0u;
 			}
 		}
+		// #ifndef GLES3
 		if (phase_shift > 0.0) {
 			VERTEX = phase_shift_vertex(VERTEX, phase_shift * voxel_size.x * PHASE_TRANSLATE);
 			voxel_size *= 1.0 - phase_shift * (1.0 - PHASE_SHRINK);
 		}
+		// #endif
 		POINT_SIZE = max(voxel_size.x, voxel_size.y);
 
 		if (show_normals > 0.0) {

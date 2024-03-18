@@ -8,6 +8,24 @@ export(float, 0.0, 1.0) var phase_shift setget _set_phase_shift
 func _ready():
 	_set_neck_height(neck_height)
 	_set_render_head(true)
+	if OS.get_current_video_driver() == OS.VIDEO_DRIVER_GLES2:
+		_strip_gles3_from_shader()
+
+
+func _strip_gles3_from_shader():
+	if Engine.editor_hint:
+		return
+	var mat = mesh.surface_get_material(0) as ShaderMaterial
+	if !mat || mat.shader.has_meta('gles3_stripped'):
+		return
+	var strip_expr = RegEx.new()
+	strip_expr.compile("(?s)\\/\\/ #ifndef GLES3.+?\\/\\/ #endif")
+	var code = mat.shader.code
+	var stripped_code = strip_expr.sub(code, '', true)
+	if code != stripped_code:
+		mat.shader.code = stripped_code
+		mat.shader.set_meta('gles3_stripped', true)
+
 
 func _get_mats() -> Array:
 	var result = []
