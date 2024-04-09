@@ -1,12 +1,12 @@
 shader_type spatial;
 render_mode blend_mix,depth_draw_always,diffuse_burley,specular_schlick_ggx, skip_vertex_transform;
-uniform vec4 albedo : hint_color;
+uniform vec4 albedo : source_color;
 uniform float specular;
 uniform float metallic;
 uniform float roughness : hint_range(0,1);
-uniform sampler2D texture_metallic : hint_white;
+uniform sampler2D texture_metallic : hint_default_white;
 uniform vec4 metallic_texture_channel;
-uniform sampler2D texture_roughness : hint_white;
+uniform sampler2D texture_roughness : hint_default_white;
 uniform vec4 roughness_texture_channel;
 uniform vec3 uv1_scale;
 uniform vec3 uv1_offset;
@@ -101,14 +101,13 @@ void vertex() {
 			points[7] = MODELVIEW_MATRIX * vec4(voxel_end.x, voxel_start.y, voxel_end.z, 1.0);
 
 			voxel_size = vec2(0.0);
-			int i = 0;
 			int j = 0;
 			vec2 vp_half = VIEWPORT_SIZE * 0.5;
-			vec2 tl = vec2(1000.0);
-			vec2 br = vec2(-1000.0);
-			float min_z = 1000.0;
-			float max_z = -1000.0;
-			for (i = 0; i < 8; i++) {
+			vec2 tl = vec2(10000.0);
+			vec2 br = vec2(-10000.0);
+			float min_z = 10000.0;
+			float max_z = -10000.0;
+			for (int i = 0; i < 8; i++) {
 				points[i].xyz /= points[i].w;
 				tl = min(tl, points[i].xy);
 				br = max(br, points[i].xy);
@@ -117,7 +116,6 @@ void vertex() {
 			}
 			// voxel size is mostly correct at this z level
 			float z = (max_z - min_z) * 0.5 + min_z;
-			vec2 edge = vec2(min(1.0, VIEWPORT_SIZE.y / VIEWPORT_SIZE.x), min(1.0, VIEWPORT_SIZE.x / VIEWPORT_SIZE.y));
 			vec4 br_proj = PROJECTION_MATRIX * vec4(br, z, 1.0);
 			vec4 tl_proj = PROJECTION_MATRIX * vec4(tl, z, 1.0);
 			br_proj.xy /= br_proj.w;
@@ -127,7 +125,9 @@ void vertex() {
 			// if the voxel is outside the square center of the screen then the
 			// distance between voxels needs to be enlarged to cover gaps..
 			vec2 close = min(voxel_size * 10.0, max(0.0, 1.0 - voxel.z) * voxel_size * 200.0);
+			vec2 edge = vec2(min(1.0, VIEWPORT_SIZE.y / VIEWPORT_SIZE.x), min(1.0, VIEWPORT_SIZE.x / VIEWPORT_SIZE.y));
 			vec2 edge_boost = max(vec2(0.0), abs_display_coord - edge) * close;
+			voxel_size.y *= -1.0;
 			voxel_size += edge_boost * 0.1;
 			voxel_size *= vp_half;
 		}

@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://dawxocmrrolv3"]
+
+[ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="1_vpkrw"]
+[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_8hjk1"]
+
+[node name="Node3D" type="Node3D"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = ExtResource("1_vpkrw")
+script = ExtResource("2_8hjk1")
+render_head = true
+
+[node name="OmniLight3D" type="OmniLight3D" parent="MeshInstance3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.613394, 0.94523, 1)
+
+[node name="OmniLight3D2" type="OmniLight3D" parent="MeshInstance3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.64577, 1.38055, -0.408267)
+
+[node name="OmniLight3D3" type="OmniLight3D" parent="MeshInstance3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.00435, 0.123599, -2.57619)
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.952144, -0.0691395, 0.297728, -0.0636702, 0.907845, 0.414443, -0.298945, -0.413566, 0.859997, 0.299738, 0.612639, 0.817164)

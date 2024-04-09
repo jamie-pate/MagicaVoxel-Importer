@@ -1,24 +1,24 @@
-tool
-extends Area
+@tool
+extends Area3D
 
 signal _physics_collide_bones()
 
 # todo: plugin menu?
 # in the meantime you can check 'Collect Bones' to manually run the tool script
-export var collect_bones := false setget _set_collect_bones
-export var mirror_ltr := false setget _set_mirror_ltr
-export var mirror_rtl := false setget _set_mirror_rtl
-export var auto_reimport := true
+@export var collect_bones := false: set = _set_collect_bones
+@export var mirror_ltr := false: set = _set_mirror_ltr
+@export var mirror_rtl := false: set = _set_mirror_rtl
+@export var auto_reimport := true
 
 # magic property that will update the prefix on ALL rig children!
-export var bone_prefix: String setget _set_bone_prefix
+@export var bone_prefix: String: set = _set_bone_prefix
 
 # These 3 are exported below using _get_property_list
-var mesh_path: NodePath setget _set_mesh_path
-var skeleton_path: NodePath setget _set_skeleton_path
-var area_path: NodePath setget _set_area_path
+var mesh_path: NodePath: set = _set_mesh_path
+var skeleton_path: NodePath: set = _set_skeleton_path
+var area_path: NodePath: set = _set_area_path
 
-export var blend_factor: float = 1.0
+@export var blend_factor: float = 1.0
 
 var _new_prefix = null
 var _old_prefix = null
@@ -26,35 +26,32 @@ var _collecting_bones := false
 
 func _ready():
 	set_physics_process(false)
-	if !Engine.editor_hint:
+	if !Engine.is_editor_hint():
 		for c in get_children():
-			if c is CollisionShape:
+			if c is CollisionShape3D:
 				c.disabled = true
 	monitoring = false
 	monitorable = false
 
 func _get_property_list():
-	# apparently this isn't exposed?
-	# PropertyHint.PROPERTY_HINT_NODE_PATH_VALID_TYPES
-	var PROPERTY_HINT_NODE_PATH_VALID_TYPES = PROPERTY_HINT_IMAGE_COMPRESS_LOSSLESS + 13
 	return [
 		{
 			name='skeleton_path',
 			type=TYPE_NODE_PATH,
 			hint=PROPERTY_HINT_NODE_PATH_VALID_TYPES,
-			hint_string='Skeleton'
+			hint_string='Skeleton3D'
 		},
 		{
 			name='mesh_path',
 			type=TYPE_NODE_PATH,
 			hint=PROPERTY_HINT_NODE_PATH_VALID_TYPES,
-			hint_string='MeshInstance'
+			hint_string='MeshInstance3D'
 		},
 		{
 			name='area_path',
 			type=TYPE_NODE_PATH,
 			hint=PROPERTY_HINT_NODE_PATH_VALID_TYPES,
-			hint_string='Area'
+			hint_string='Area3D'
 		}
 	]
 
@@ -76,12 +73,12 @@ func _set_mirror_rtl(value):
 
 func _mirror_shapes(from: String, to: String):
 	for c in get_children():
-		if c is CollisionShape && c.name.find(from) > -1:
+		if c is CollisionShape3D && c.name.find(from) > -1:
 			var mirror_name = c.name.replace(from, to)
 			var other = get_node_or_null(mirror_name)
 			if other:
 				other.transform.origin = c.transform.origin * Vector3(-1, 1, 1)
-				other.transform.basis = c.transform.basis.rotated(Vector3.UP, deg2rad(180))
+				other.transform.basis = c.transform.basis.rotated(Vector3.UP, deg_to_rad(180))
 
 func _set_bone_prefix(value):
 	if value == bone_prefix:
@@ -90,7 +87,7 @@ func _set_bone_prefix(value):
 	# debounce because this will remove focus from the inspector..
 	var first_run = _old_prefix == null
 	if !first_run:
-		yield(get_tree().create_timer(1.0), 'timeout')
+		await get_tree().create_timer(1.0).timeout
 	if is_instance_valid(self) && is_inside_tree() && _new_prefix == value:
 		# this is the initial load
 		_old_prefix = bone_prefix
@@ -119,7 +116,7 @@ func _shape_name_to_bone_name(value: String):
 	return parts[0] if len(parts) else ''
 
 func _collect_bones_once():
-	if is_inside_tree() && !collect_bones && Engine.editor_hint:
+	if is_inside_tree() && !collect_bones && Engine.is_editor_hint():
 		var editor_node = get_tree().root.get_node('EditorNode')
 		var editor_interface = null
 		for c in editor_node.get_children():
@@ -133,7 +130,7 @@ func _collect_bones_once():
 		_collecting_bones = true
 		_collect_bones()
 		collect_bones = false
-		yield(get_tree(), 'idle_frame')
+		await get_tree().idle_frame
 		if is_instance_valid(self):
 			_collecting_bones = false
 
@@ -142,22 +139,22 @@ func _collect_bones():
 		# this gets called when you set mesh/skeleton/area paths but we don't really want
 		# to do it if you are just loading the scene
 		return
-	var start := OS.get_ticks_msec()
-	var skel := get_node_or_null(skeleton_path) as Skeleton
-	var mi := get_node_or_null(mesh_path) as MeshInstance
-	var area := get_node_or_null(area_path) as Area
+	var start := Time.get_ticks_msec()
+	var skel := get_node_or_null(skeleton_path) as Skeleton3D
+	var mi := get_node_or_null(mesh_path) as MeshInstance3D
+	var area := get_node_or_null(area_path) as Area3D
 	var self_area = self
 	var path = owner.get_parent().get_path_to(self) if owner && owner.get_parent() else get_path()
-	if !area && self_area is Area:
+	if !area && self_area is Area3D:
 		area = self_area
 	if !mi || !skel:
 		if is_inside_tree():
 			if mesh_path && !mi:
 				printerr('%s Mesh not found at path %s' % [path, mesh_path])
 			if skeleton_path && !skel:
-				printerr('%s Skeleton not found at path %s' % [path, skeleton_path])
+				printerr('%s Skeleton3D not found at path %s' % [path, skeleton_path])
 			if area_path && !area:
-				printerr('%s Area not found at path %s' % [path, area_path])
+				printerr('%s Area3D not found at path %s' % [path, area_path])
 			print('%s needs mesh_path:(%s) and skeleton_path:(%s)' % [path, !!mesh_path, !!skeleton_path])
 		return
 	var mesh := mi.mesh as ArrayMesh
@@ -174,47 +171,45 @@ func _collect_bones():
 
 	var s := 0
 	var surface := mesh.surface_get_arrays(s)
-	var vertices := surface[ArrayMesh.ARRAY_VERTEX] as PoolVector3Array
+	var vertices := surface[ArrayMesh.ARRAY_VERTEX] as PackedVector3Array
 	var bones = surface[ArrayMesh.ARRAY_BONES]
-	if !bones is PoolIntArray:
-		if bones is PoolRealArray:
-			print('bones is PoolRealArray')
+	if !bones is PackedInt32Array:
+		if bones is PackedFloat32Array:
+			print('bones is PackedFloat32Array')
 		elif !bones:
-			bones = PoolIntArray()
+			bones = PackedInt32Array()
 		else:
 			printerr('bones is %s' % typeof(bones))
-	var weights : PoolRealArray = surface[ArrayMesh.ARRAY_WEIGHTS] if surface[ArrayMesh.ARRAY_WEIGHTS] else PoolRealArray()
+	var weights : PackedFloat32Array = surface[ArrayMesh.ARRAY_WEIGHTS] if surface[ArrayMesh.ARRAY_WEIGHTS] else PackedFloat32Array()
 
 	print('verts: %s bones: %s weights: %s ' %  [len(vertices), len(bones), len(weights)])
 	var vert_count = len(vertices)
 	var import_file = '%s.import' % mesh.resource_path
-	var f := File.new()
-	var d := Directory.new()
-	if !d.file_exists(import_file):
+	if !FileAccess.file_exists(import_file):
 		printerr('Import file does not exist: %s' % [import_file])
 		return
-	var err := f.open(import_file, File.READ)
-	if err != OK:
-		printerr('Unable to read from import file %s: %s' % [import_file, err])
+	var f := FileAccess.open(import_file, FileAccess.READ)
+	if !f:
+		printerr('Unable to read from import file %s: %s' % [import_file, FileAccess.get_open_error()])
 		return
-
-	bones.resize(vert_count * ArrayMesh.ARRAY_WEIGHTS_SIZE)
-	weights.resize(vert_count * ArrayMesh.ARRAY_WEIGHTS_SIZE)
-	var space := PhysicsServer.area_get_space(area.get_rid())
-	var state := PhysicsServer.space_get_direct_state(space)
+	var weights_sz := 8 if mesh.flags & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS else 4
+	bones.resize(vert_count * weights_sz)
+	weights.resize(vert_count * weights_sz)
+	var space := PhysicsServer3D.area_get_space(area.get_rid())
+	var state := PhysicsServer3D.space_get_direct_state(space)
 	var USE_BOX = false
-	var voxel = PhysicsServer.shape_create(PhysicsServer.SHAPE_BOX if USE_BOX else PhysicsServer.SHAPE_SPHERE)
+	var voxel = PhysicsServer3D.box_shape_create() if USE_BOX else PhysicsServer3D.sphere_shape_create()
 
 	var root_scale := 1.0
 	var mat := mesh.surface_get_material(0) as ShaderMaterial
 	if mat:
-		root_scale = mat.get_shader_param('root_scale')
+		root_scale = mat.get_shader_parameter('root_scale')
 	var data = mi.scale * 0.5 * root_scale
 	if USE_BOX:
-		PhysicsServer.shape_set_data(voxel, data)
+		PhysicsServer3D.shape_set_data(voxel, data)
 	else:
-		PhysicsServer.shape_set_data(voxel, data.x)
-	var qp := PhysicsShapeQueryParameters.new()
+		PhysicsServer3D.shape_set_data(voxel, data.x)
+	var qp := PhysicsShapeQueryParameters3D.new()
 
 	qp.shape_rid = voxel
 	qp.collide_with_areas = true
@@ -223,12 +218,12 @@ func _collect_bones():
 	var bone_map = {}
 	var bone_overlap = {}
 
-	var w := PoolRealArray()
-	for i in ArrayMesh.ARRAY_WEIGHTS_SIZE:
+	var w := PackedFloat32Array()
+	for i in range(weights_sz):
 		w.append(0.0)
 	var enabled_shapes := {}
 	for c in area.get_children():
-		if c is CollisionShape && !c.disabled:
+		if c is CollisionShape3D && !c.disabled:
 			var bone_name = _shape_name_to_bone_name(c.name)
 			if !bone_name in enabled_shapes:
 				enabled_shapes[bone_name] = []
@@ -239,8 +234,8 @@ func _collect_bones():
 	for i in len(vertices):
 		var v := vertices[i]
 
-		qp.transform = mi.global_transform * Transform.translated(v)
-		var collisions := state.intersect_shape(qp, ArrayMesh.ARRAY_WEIGHTS_SIZE)
+		qp.transform = mi.global_transform * Transform3D(Basis(), v)
+		var collisions := state.intersect_shape(qp, weights_sz)
 		var weight_total := 0.0
 		var c_len = len(collisions)
 		if !c_len:
@@ -248,12 +243,12 @@ func _collect_bones():
 
 		var bone_count := 0
 		var bone_names := []
-		var b_i = ArrayMesh.ARRAY_WEIGHTS_SIZE * i
+		var b_i = weights_sz * i
 		var b := 0
-		while b < ArrayMesh.ARRAY_WEIGHTS_SIZE:
+		while b < weights_sz:
 			w[b] = 0.0
 			var found := false
-			if b < c_len && b_i + b < vert_count * ArrayMesh.ARRAY_WEIGHTS_SIZE:
+			if b < c_len && b_i + b < vert_count * weights_sz:
 				var shape_idx := collisions[b].shape as int
 				var collider = collisions[b].collider
 				if collider != area:
@@ -292,7 +287,7 @@ func _collect_bones():
 				bones[b_i + b] = 0
 			b += 1
 		b = 0
-		while b < ArrayMesh.ARRAY_WEIGHTS_SIZE:
+		while b < weights_sz:
 			var bw = w[b] / weight_total if weight_total > 0 else 0.0
 			if blend_factor != 1.0:
 				bw = max(0.0, min(1.0, (bw - 0.5) * blend_factor + 0.5))
@@ -305,9 +300,9 @@ func _collect_bones():
 			bone_overlap[bone_names] += 1
 
 	area.collision_layer = 0
-	PhysicsServer.free_rid(voxel)
+	PhysicsServer3D.free_rid(voxel)
 	if fail:
-		printerr('Fatal error: %s' % [PoolStringArray(fail.slice(0, 10)).join('\n')])
+		printerr('Fatal error: %s' % ['\n'.join(fail.slice(0, 10))])
 		return
 	var bone_ids = {}
 	for bone in bone_map:
@@ -322,22 +317,22 @@ func _collect_bones():
 			missing_voxels.slice(0, 10)
 		])
 
-	var lines := PoolStringArray()
+	var lines := PackedStringArray()
 	while !f.eof_reached():
 		var line := f.get_line()
 		if !line.begins_with('bones=') && !line.begins_with('weights='):
 			lines.append(line)
 	f.close()
 	if len(lines) && lines[len(lines) - 1] == '':
-		lines.remove(len(lines) - 1)
-	err = f.open(import_file, File.WRITE)
-	if err != OK:
-		printerr('Unable to write to import file %s: %s' % [import_file, err])
+		lines.remove_at(len(lines) - 1)
+	f = FileAccess.open(import_file, FileAccess.WRITE)
+	if !f:
+		printerr('Unable to write to import file %s: %s' % [import_file, FileAccess.get_open_error()])
 		return
 	for l in lines:
 		f.store_line(l)
-	f.store_line('bones=%s' % [var2str(bones)])
-	f.store_line('weights=%s' % [var2str(weights)])
+	f.store_line('bones=%s' % [var_to_str(bones)])
+	f.store_line('weights=%s' % [var_to_str(weights)])
 	f.close()
 
 	print('Saved to %s bones: %s weights: %s' % [
@@ -345,13 +340,13 @@ func _collect_bones():
 		len(bones),
 		len(weights)
 	])
-	print('Bone Collection took %sms' % [OS.get_ticks_msec() - start])
+	print('Bone Collection took %sms' % [Time.get_ticks_msec() - start])
 	# big hack...
 	if collect_bones && auto_reimport:
 		call_deferred('re_import')
 
 
-func _calc_bone_weight(area: Area, enabled_shapes: Dictionary, shape: CollisionShape, state: PhysicsDirectSpaceState, origin: Vector3) -> float:
+func _calc_bone_weight(area: Area3D, enabled_shapes: Dictionary, shape: CollisionShape3D, state: PhysicsDirectSpaceState3D, origin: Vector3) -> float:
 	"""
 	Get the unnormalized bone weight for a bone based on the distance to the edge of the shape
 	Currently measures the distance from the origin to the outside of the shape
@@ -372,7 +367,10 @@ func _calc_bone_weight(area: Area, enabled_shapes: Dictionary, shape: CollisionS
 	# ray points toward the center of the shape from the current voxel
 	var ray = ray_end - origin
 	var ray_start = ray_end - ray.normalized() * RAY_LEN
-	var intersect = state.intersect_ray(ray_start, ray_end, [], ~0, false, true)
+	var ray_param = PhysicsRayQueryParameters3D.create(ray_start, ray_end, ~0, [])
+	ray_param.collide_with_bodies = false
+	ray_param.collide_with_areas = true
+	var intersect = state.intersect_ray(ray_param)
 	for n in enabled_shapes:
 		for es in enabled_shapes[n]:
 			es.disabled = false
@@ -383,8 +381,8 @@ func _calc_bone_weight(area: Area, enabled_shapes: Dictionary, shape: CollisionS
 		return 0.0
 
 func re_import():
-	if Engine.editor_hint:
-		var mi := get_node_or_null(mesh_path) as MeshInstance
+	if Engine.is_editor_hint():
+		var mi := get_node_or_null(mesh_path) as MeshInstance3D
 		if !mi:
 			return
 		var mesh := mi.mesh as ArrayMesh
@@ -399,6 +397,6 @@ func re_import():
 				break
 		if bc:
 			# super duper big hack
-			var import = bc.find_node('Import', true, false)
+			var import = bc.find_child('Import', true, false)
 			if import:
 				import._reimport()

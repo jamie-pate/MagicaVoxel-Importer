@@ -15,7 +15,7 @@ Adjust the settings as needed.
 
 ## Animated Voxel Mesh
 
-Use the BoneRig.gd script to apply an Area's CollisionShape with bone
+Use the bone_rig.gd script to apply an Area's CollisionShape with bone
 names to each voxel and re-import with bones/weights
 
 See the readme at https://github.com/jamie-pate/govox for examples and details.

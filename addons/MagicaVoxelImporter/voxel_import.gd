@@ -1,12 +1,12 @@
-extends Reference
-const shader = preload('./points.shader')
+extends RefCounted
+const shader = preload('./points.gdshader')
 
 const MAX_AXIS_SIZE = 256
 const TIME_DBG = false
 
 var _time := 0
 
-class MV extends Reference:
+class MV extends RefCounted:
 	# revive a string from the stream
 	func mv_str(file):
 		var size = file.get_32()
@@ -15,7 +15,7 @@ class MV extends Reference:
 		return buff.get_string_from_utf8()
 
 	# revive a dict from the stream
-	func mv_dict(file: File):
+	func mv_dict(file: FileAccess):
 		var size = file.get_32()
 		var result = {}
 		for i in size:
@@ -23,7 +23,7 @@ class MV extends Reference:
 			result[mv_str(file)] = mv_str(file)
 		return result
 
-class MVChunk extends Reference:
+class MVChunk extends RefCounted:
 	var id
 	var size
 	var child_count
@@ -32,13 +32,13 @@ class MVChunk extends Reference:
 
 	func init(file):
 		header_position = file.get_position()
-		id = PoolByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii() #char[] chunkId
+		id = PackedByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii() #char[] chunkId
 		size = file.get_32()
 		child_count = file.get_32()
 		position = file.get_position()
 		#print('id:%s sz:%d cc:%d' % [id, size, child_count])
 
-class MVVoxels extends Reference:
+class MVVoxels extends RefCounted:
 	var pos := Vector3(0,0,0)
 	var color_idx: int
 	var color: Color
@@ -50,7 +50,7 @@ class MVVoxels extends Reference:
 
 	# each voxel starts with x(right), y(up), z(forward), color_idx values
 	# y is up and -z is forward in godot, so we swap those here.
-	func init(file: File):
+	func init(file: FileAccess):
 		pos.x = file.get_8()
 		pos.z = -file.get_8()
 		pos.y = file.get_8()
@@ -61,8 +61,8 @@ class MVVoxels extends Reference:
 		return 'MVVoxels pos:%s color:%s normal:%s chunkNum:%s' % [pos, color, normal, chunkNum]
 
 
-class VoxData extends Reference:
-	class Vox3 extends Reference:
+class VoxData extends RefCounted:
+	class Vox3 extends RefCounted:
 		var x := 0
 		var y := 0
 		var z := 0
@@ -98,7 +98,8 @@ class VoxData extends Reference:
 	# maybe some dense models may be faster with array?
 	const MAX_ARRAY_VOLUME = 0# 1024 * 1024 * 1024
 
-	const t := PoolIntArray([0, 0, 0, 0, 0, 0])
+	static var t: PackedInt64Array
+
 	var dict_data := {}
 	var array_data := []
 	var size := Vox3.new()
@@ -112,8 +113,13 @@ class VoxData extends Reference:
 	var use_dict := false
 	var reported := 0
 
+
 	func _init(_size: Vector3):
+		assert(VoxData.t, "vd.t is null")
+		assert(t, "t is null")
+		assert(len(t) == 6, "t len is not 6")
 		size = Vox3.new(_size)
+		assert(size.x > 0 && size.y > 0 && size.z > 0, "No dimension can be 0")
 		var volume = size.volume()
 		if volume > MAX_ARRAY_VOLUME:
 			use_dict = true
@@ -141,31 +147,33 @@ class VoxData extends Reference:
 
 	func get_vox(pos: Vector3) -> MVVoxels:
 		# note: don't create vox3 for xyz because it's too slow
-		var start = OS.get_ticks_usec()
+		var start = Time.get_ticks_usec()
 		if !(pos.x >= aabb_start_x && pos.y >= aabb_start_y && pos.z >= aabb_start_z && \
 				pos.x <= aabb_end_x && pos.y <= aabb_end_y && pos.z <= aabb_end_z):
-			t[1] = t[1] + (OS.get_ticks_usec() - start)
+			t[1] = t[1] + (Time.get_ticks_usec() - start)
 			return null
-		var end = OS.get_ticks_usec()
+		var end = Time.get_ticks_usec()
 		t[1] = t[1] + (end - start)
 		start = end
 		var result
 		if use_dict:
 			result = dict_data.get(pos)
 		else:
+
 			var x = int(pos.x)
 			var y = int(pos.y)
 			var z = int(pos.z)
-			end = OS.get_ticks_usec()
+			end = Time.get_ticks_usec()
 			t[0] = t[0] + (end - start)
 			start = end
 
 			var idx := _coord_idx(x, y, z)
-			end = OS.get_ticks_usec()
+			end = Time.get_ticks_usec()
 			t[2] = t[2] + (end - start)
 			start = end
+
 			result = array_data[idx]
-		t[3] = t[3] + (OS.get_ticks_usec() - start)
+		t[3] = t[3] + (Time.get_ticks_usec() - start)
 		return result
 
 	func set_vox(value: MVVoxels) -> void:
@@ -216,7 +224,7 @@ class MVGroupNode extends MV:
 	var node_id: int
 	var attr := {}
 	var child_count: int
-	var child_ids := PoolIntArray()
+	var child_ids := PackedInt32Array()
 	var children := []
 
 	func _to_string():
@@ -296,7 +304,7 @@ class MVTransformNode extends MV:
 					# Z is 'up' in magicavoxel, forward y is negative
 					origin = Vector3(int(o[0]), int(o[2]), -int(o[1]))
 				else:
-					printerr('Invalid _t translation: %s' % [frame._t])
+					printerr('Invalid _t position: %s' % [frame._t])
 
 	func mv_rot_to_basis(byte: int):
 		# so stupidly complicated... also Z is 'up'
@@ -321,7 +329,7 @@ class MVTransformNode extends MV:
 		print('rot_to_basis %s > %s > %s > %s' % [row_idx, rows, signs, result])
 		return result
 
-class MVModel extends Reference:
+class MVModel extends RefCounted:
 	var id: int
 	var size: Vector3
 	var vox: VoxData
@@ -329,22 +337,24 @@ class MVModel extends Reference:
 func time(desc: String):
 	if TIME_DBG:
 		var old_time = _time
-		_time = OS.get_ticks_msec()
+		_time = Time.get_ticks_msec()
 		print('%s %s ms' % [desc, _time - old_time])
 
 #Gets called when pressing a file gets imported / reimported
-func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+	if !"mesh_flags" in options:
+		# allow user to specify BitField[Mesh.ArrayFormat] flags like ARRAY_FLAG_USE_8_BONE_WEIGHTS
+		options.mesh_flags = 0
 	print_debug('Import %s' % [source_path])
-	_time = OS.get_ticks_msec()
+	_time = Time.get_ticks_msec()
 	var start_time = _time
 	var CHUNK_DBG = false
 	var MESH_DBG = false
-	var BONE_DBG = true
-	var file = File.new()
-	var error = file.open( source_path, File.READ )
-	if error != OK:
-		if file.is_open(): file.close()
-		return error
+	var BONE_DBG = false
+
+	var file = FileAccess.open( source_path, FileAccess.READ )
+	if !file:
+		return FileAccess.get_open_error()
 
 	##################
 	#  Import Voxels #
@@ -358,16 +368,18 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 	var models := []
 	var graph: MVTransformNode = null
 	#var derp = PoolByteArray(file.get_8()).get
-	var magic = PoolByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii()
+	var magic = PackedByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii()
 
 	var version = file.get_32()
+	# static variables are not initialized sometimes https://github.com/godotengine/godot/issues/81250
+	VoxData.t = PackedInt64Array([0, 0, 0, 0, 0, 0])
 	# a MagicaVoxel .vox file starts with a 'magic' 4 character 'VOX ' identifier
 	if magic == "VOX ":
 		var size := Vector3()
 		var names = {}
 		var chunkNum = 0
 
-		while file.get_position() < file.get_len():
+		while file.get_position() < file.get_length():
 			# each chunk has an ID, size and child chunks
 
 			var chunk = MVChunk.new()
@@ -432,7 +444,7 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 				if !(chunkName in ['MATL', 'rOBJ']) and chunkName and CHUNK_DBG:
 					print('Unknown chunk: %s with %d children (%db)' % [chunkName, chunk.child_count, chunk.size])
 					print('{0}'.format([buff]))
-			if file.get_position() < file.get_len() && file.get_position() != chunk.position + chunk.size:
+			if file.get_position() < file.get_length() && file.get_position() != chunk.position + chunk.size:
 				var diff = chunk.position + chunk.size - file.get_position()
 				if CHUNK_DBG:
 					print('file position is wrong reading %s %d != %d + %d (%d), skip %d bytes' % [chunkName, file.get_position(), chunk.position, chunk.size, chunk.position + chunk.size, diff])
@@ -466,7 +478,7 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 	##################
 	#   Create Mesh  #
 	##################
-	var transform := Transform()
+	var transform := Transform3D()
 	var auto_center = 'origin' in options && options.origin != 1
 	if auto_center:
 		# Calculate aabb for centering offset
@@ -502,12 +514,12 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 	else:
 		var revelant_transforms = find_relevant_transforms(tfm[0], tfm, nodes, groups, shapes, models, 0)
 		for t in revelant_transforms:
-			transform *= Transform(t.basis, Vector3()) * Transform(Basis(), t.origin)
+			transform *= Transform3D(t.basis, Vector3()) * Transform3D(Basis(), t.origin)
 
 	time('set origin')
 	# Create the mesh
 	var root_scale := float(options.root_scale) if 'root_scale' in options else 1.0
-	var st = SurfaceTool.new()
+	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_POINTS)
 	for chunk in data:
 		var voxelData = chunk.vox
@@ -526,7 +538,7 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 			voxel.normal = normal
 
 		time('chunk %s normals' % [chunk.data[0].chunkNum])
-		var directions := PoolVector3Array([Vector3.FORWARD, Vector3.RIGHT, Vector3.UP])
+		var directions := PackedVector3Array([Vector3.FORWARD, Vector3.RIGHT, Vector3.UP])
 		if smoothing > 0:
 			# pass1, collect primary axes neighbour smoothing levels..
 			for v in chunk.vox.voxels():
@@ -553,39 +565,43 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 
 		time('chunk %s normal smoothing' % [chunk.data[0].chunkNum])
 		var b = 0
-		var bones := options.bones as PoolIntArray if 'bones' in options and options.bones is PoolIntArray else PoolIntArray()
-		var weights := options.weights as PoolRealArray if 'weights' in options and options.weights is PoolRealArray else PoolRealArray()
+		var bones := options.bones as PackedInt32Array if 'bones' in options and options.bones is PackedInt32Array else PackedInt32Array()
+		var weights := options.weights as PackedFloat32Array if 'weights' in options and options.weights is PackedFloat32Array else PackedFloat32Array()
 
 		var max_bone := 0
-		var bone_colors := PoolColorArray()
+		var bone_colors := PackedColorArray()
 		if 'copy_bones_to_uv' in options && options.copy_bones_to_uv:
 			for bone_id in bones:
 				max_bone = bone_id if bone_id > max_bone else max_bone
 			bone_colors = _gen_colors(max_bone)
-		if BONE_DBG:
+		if BONE_DBG && (len(bones) || len(weights)):
 			print('bones: %s weights: %s' % [len(bones), len(weights)])
-		var weights_sz = ArrayMesh.ARRAY_WEIGHTS_SIZE
-		var center = Transform(Basis(), -chunk.vox.center())
+		if MESH_DBG:
+			print('voxels: %s' % [len(chunk.data)])
+		var weights_sz = 8 if options.mesh_flags & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS else 4
+		assert(weights_sz == 4, "ARRAY_FLAG_USE_8_BONE_WEIGHTS not yet supported")
+		var center = Transform3D(Basis(), -chunk.vox.center())
 		var center_tfm = transform * center
+
 		for voxel in chunk.data:
-			st.add_color(voxel.color)
+			st.set_color(voxel.color)
 			var normal = voxel.normal
 			normal = normal.normalized()
-			st.add_normal(normal)
+			st.set_normal(normal)
 
 			if bones && weights && len(bones) >= b + weights_sz && len(weights) >= b + weights_sz:
 				if 'copy_bones_to_uv' in options && options.copy_bones_to_uv:
 					var bc := Color()
 					for i in 4:
 						bc += bone_colors[bones[b + i] % len(bone_colors)] * weights[b + i]
-					st.add_uv(Vector2(bc.r, bc.g))
-					st.add_uv2(Vector2(bc.b, 1.0))
-				st.add_bones(PoolIntArray([bones[b], bones[b + 1], bones[b + 2], bones[b + 3]]))
-				st.add_weights([weights[b], weights[b + 1], weights[b + 2], weights[b + 3]])
-				b += ArrayMesh.ARRAY_WEIGHTS_SIZE
+					st.set_uv(Vector2(bc.r, bc.g))
+					st.set_uv2(Vector2(bc.b, 1.0))
+				st.set_bones(PackedInt32Array([bones[b], bones[b + 1], bones[b + 2], bones[b + 3]]))
+				st.set_weights([weights[b], weights[b + 1], weights[b + 2], weights[b + 3]])
+				b += weights_sz
 
 			#st.add_tangent(normal.normalized())
-			st.add_vertex((center_tfm.xform(voxel.pos)) * root_scale)
+			st.add_vertex((center_tfm * (voxel.pos)) * root_scale)
 			"""
 			for tri in to_draw:
 				st.add_vertex( (tri*0.5)+voxel.pos+dif)
@@ -603,20 +619,20 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 			]])
 	#st.generate_normals()
 
-	var shader_path = self.get_script().get_path().replace('plugin.gd', 'points.shader')
+	var shader_path = self.get_script().get_path().replace('plugin.gd', 'points.gdshader')
 	var material = ShaderMaterial.new()
 	material.shader = shader
-	material.set_shader_param('albedo', Color(1, 1, 1))
-	material.set_shader_param('root_scale', root_scale)
+	material.set_shader_parameter('albedo', Color(1, 1, 1))
+	material.set_shader_parameter('root_scale', root_scale)
 	#material.set_flag(material.FLAG_USE_COLOR_ARRAY,true)
 	st.set_material(material)
 	var mesh: ArrayMesh
 	time('set material')
 	if old_mesh:
 		old_mesh.surface_remove(0)
-		mesh = st.commit(old_mesh)
+		mesh = st.commit(old_mesh, options.mesh_flags)
 	else:
-		mesh = st.commit()
+		mesh = st.commit(null, options.mesh_flags)
 
 	mesh.set_meta('root_scale', root_scale)
 	time('commit mesh')
@@ -625,14 +641,14 @@ func load_vox( source_path, options={bones=[],weights=[]}, platforms=null, gen_f
 	data = null
 	return mesh
 
-func _gen_colors(count: int) -> PoolColorArray:
-	var result := PoolColorArray()
+func _gen_colors(count: int) -> PackedColorArray:
+	var result := PackedColorArray()
 	var h_repeat := 3.0
 	var h_repeat_half := h_repeat * 0.5
 	for i in count:
 		var h := _fract(float(i) / float(count) * h_repeat)
-		var s := floor(float(i) / float(count) * h_repeat_half) / h_repeat_half * 0.5 + 0.5
-		var v := floor(float(i) / float(count) * 2.0) / 2.0 * 0.5 + 0.5
+		var s: float = floor(float(i) / float(count) * h_repeat_half) / h_repeat_half * 0.5 + 0.5
+		var v: float = floor(float(i) / float(count) * 2.0) / 2.0 * 0.5 + 0.5
 		result.append(Color.from_hsv(h, s , v))
 	return result
 
@@ -663,7 +679,7 @@ func find_relevant_transforms(root: MVTransformNode, tfm: Dictionary, nodes: Dic
 		if p is MVTransformNode:
 			result.append(p)
 		p = node_owners[p.node_id] if p.node_id in node_owners else null
-	result.invert()
+	result.reverse()
 	return result
 
 
