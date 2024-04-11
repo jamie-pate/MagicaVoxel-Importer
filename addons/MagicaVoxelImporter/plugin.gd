@@ -88,4 +88,12 @@ class ImportPlugin extends EditorImportPlugin:
 		var mesh: ArrayMesh = vi.load_vox(source_path, options, platforms, gen_files, old_mesh)
 
 		var full_path = "%s.%s" % [save_path, _get_save_extension()]
+		# https://github.com/godotengine/godot/issues/90461
+		var mutex_bug = true
+		if mutex_bug:
+			call_deferred("_save", mesh, full_path)
+			return OK
+		return _save(mesh, full_path)
+
+	func _save(mesh, full_path):
 		return ResourceSaver.save(mesh, full_path)

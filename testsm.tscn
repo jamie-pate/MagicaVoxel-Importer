@@ -1,0 +1,53 @@
+[gd_scene load_steps=6 format=3 uid="uid://5ky488mc26ia"]
+
+[ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="1_ct7gk"]
+[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_0ntve"]
+[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/bone_rig.gd" id="3_136jo"]
+[ext_resource type="PackedScene" uid="uid://dja84egovn7us" path="res://testsm-skeleton.gltf" id="4_sjj2i"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_g5h4p"]
+size = Vector3(0.5, 0.5, 0.5)
+
+[node name="C1" type="Node3D"]
+
+[node name="VoxChar" type="MeshInstance3D" parent="."]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 0, 0.2, 0)
+cast_shadow = 0
+mesh = ExtResource("1_ct7gk")
+skeleton = NodePath("../testsm-skeleton/Armature/Skeleton3D")
+script = ExtResource("2_0ntve")
+render_head = true
+
+[node name="Rig" type="Area3D" parent="VoxChar"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+script = ExtResource("3_136jo")
+skeleton_path = NodePath("../../testsm-skeleton/Armature/Skeleton3D")
+mesh_path = NodePath("..")
+area_path = NodePath("")
+
+[node name="Top1" type="CollisionShape3D" parent="VoxChar/Rig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("BoxShape3D_g5h4p")
+
+[node name="Bottom1" type="CollisionShape3D" parent="VoxChar/Rig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+shape = SubResource("BoxShape3D_g5h4p")
+
+[node name="testsm-skeleton" parent="." instance=ExtResource("4_sjj2i")]
+transform = Transform3D(-1, 0, 1.50996e-07, 0, 1, 0, -1.50996e-07, 0, -1, 0, 0, 0)
+
+[node name="Skeleton3D" parent="testsm-skeleton/Armature" index="0"]
+bones/0/rotation = Quaternion(-0.707107, 8.63894e-08, -8.63894e-08, 0.707107)
+bones/1/rotation = Quaternion(0.707107, -2.09571e-09, 1.70683e-07, 0.707107)
+bones/1/scale = Vector3(1, 1, 1)
+bones/2/rotation = Quaternion(-0.707107, 1.50729e-14, -1.68587e-07, 0.707107)
+bones/3/rotation = Quaternion(-0.707107, -2.09571e-09, -1.70683e-07, 0.707107)
+bones/4/rotation = Quaternion(0.707107, 7.53644e-15, 1.68587e-07, 0.707107)
+
+[node name="testsm" parent="testsm-skeleton/Armature/Skeleton3D" index="0"]
+visible = false
+
+[editable path="testsm-skeleton"]

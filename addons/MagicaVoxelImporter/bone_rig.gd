@@ -117,20 +117,15 @@ func _shape_name_to_bone_name(value: String):
 
 func _collect_bones_once():
 	if is_inside_tree() && !collect_bones && Engine.is_editor_hint():
-		var editor_node = get_tree().root.get_node('EditorNode')
-		var editor_interface = null
-		for c in editor_node.get_children():
-			if c.get_class() == 'EditorInterface':
-				editor_interface = c
-		assert(editor_interface, 'Couldn\'t find editor_interface using cheap hack!')
-		var selected = false
-		if !self in editor_interface.get_selection().get_selected_nodes():
+		if !self in EditorInterface.get_selection().get_selected_nodes():
 			return
-		collect_bones = true
+		if _collecting_bones:
+			return
 		_collecting_bones = true
+		collect_bones = true
 		_collect_bones()
 		collect_bones = false
-		await get_tree().idle_frame
+		await get_tree().process_frame
 		if is_instance_valid(self):
 			_collecting_bones = false
 
@@ -192,7 +187,8 @@ func _collect_bones():
 	if !f:
 		printerr('Unable to read from import file %s: %s' % [import_file, FileAccess.get_open_error()])
 		return
-	var weights_sz := 8 if mesh.flags & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS else 4
+	var weights_sz := 8 if mesh.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS else 4
+	assert(weights_sz == 4, "ARRAY_FLAG_USE_8_BONE_WEIGHTS is not supported")
 	bones.resize(vert_count * weights_sz)
 	weights.resize(vert_count * weights_sz)
 	var space := PhysicsServer3D.area_get_space(area.get_rid())
@@ -359,10 +355,11 @@ func _calc_bone_weight(area: Area3D, enabled_shapes: Dictionary, shape: Collisio
 	"""
 	var RAY_LEN = 10000.0
 	var bone_name = _shape_name_to_bone_name(shape.name)
+	var exclude := []
 	for n in enabled_shapes:
 		if n != bone_name:
 			for es in enabled_shapes[n]:
-				es.disabled = true
+				exclude.append(es.shape.get_rid())
 	var ray_end = shape.global_transform.origin
 	# ray points toward the center of the shape from the current voxel
 	var ray = ray_end - origin
@@ -370,10 +367,8 @@ func _calc_bone_weight(area: Area3D, enabled_shapes: Dictionary, shape: Collisio
 	var ray_param = PhysicsRayQueryParameters3D.create(ray_start, ray_end, ~0, [])
 	ray_param.collide_with_bodies = false
 	ray_param.collide_with_areas = true
+	ray_param.exclude = exclude
 	var intersect = state.intersect_ray(ray_param)
-	for n in enabled_shapes:
-		for es in enabled_shapes[n]:
-			es.disabled = false
 	if intersect:
 		return intersect.position.distance_to(origin)
 	else:

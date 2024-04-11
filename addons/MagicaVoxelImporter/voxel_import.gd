@@ -98,8 +98,6 @@ class VoxData extends RefCounted:
 	# maybe some dense models may be faster with array?
 	const MAX_ARRAY_VOLUME = 0# 1024 * 1024 * 1024
 
-	static var t: PackedInt64Array
-
 	var dict_data := {}
 	var array_data := []
 	var size := Vox3.new()
@@ -112,14 +110,11 @@ class VoxData extends RefCounted:
 	var aabb_end_z := -10000.0
 	var use_dict := false
 	var reported := 0
+	var t := PackedInt64Array([0, 0, 0, 0, 0, 0])
 
 
 	func _init(_size: Vector3):
-		assert(VoxData.t, "vd.t is null")
-		assert(t, "t is null")
-		assert(len(t) == 6, "t len is not 6")
 		size = Vox3.new(_size)
-		assert(size.x > 0 && size.y > 0 && size.z > 0, "No dimension can be 0")
 		var volume = size.volume()
 		if volume > MAX_ARRAY_VOLUME:
 			use_dict = true
@@ -371,8 +366,6 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 	var magic = PackedByteArray([file.get_8(),file.get_8(),file.get_8(),file.get_8()]).get_string_from_ascii()
 
 	var version = file.get_32()
-	# static variables are not initialized sometimes https://github.com/godotengine/godot/issues/81250
-	VoxData.t = PackedInt64Array([0, 0, 0, 0, 0, 0])
 	# a MagicaVoxel .vox file starts with a 'magic' 4 character 'VOX ' identifier
 	if magic == "VOX ":
 		var size := Vector3()
@@ -614,8 +607,12 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 			])
 		if TIME_DBG:
 			var USEC_TO_MSEC = 0.001
+			var t := PackedInt64Array([0, 0, 0, 0, 0, 0])
+			for v in chunk.vox:
+				for i in range(len(t)):
+					t[i] += v.t[i]
 			print('t=%s' % [[
-				VoxData.t[0] * USEC_TO_MSEC, VoxData.t[1] * USEC_TO_MSEC, VoxData.t[2] * USEC_TO_MSEC, VoxData.t[3] * USEC_TO_MSEC
+				t[0] * USEC_TO_MSEC, t[1] * USEC_TO_MSEC, t[2] * USEC_TO_MSEC, t[3] * USEC_TO_MSEC
 			]])
 	#st.generate_normals()
 
