@@ -1,39 +1,101 @@
-[gd_scene load_steps=6 format=3 uid="uid://5ky488mc26ia"]
+[gd_scene load_steps=8 format=3 uid="uid://5ky488mc26ia"]
 
+[ext_resource type="Shader" path="res://addons/MagicaVoxelImporter/points.gdshader" id="1_7fym1"]
 [ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="1_ct7gk"]
 [ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_0ntve"]
-[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/bone_rig.gd" id="3_136jo"]
+[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/bone_rig4.gd" id="4_gbujb"]
 [ext_resource type="PackedScene" uid="uid://dja84egovn7us" path="res://testsm-skeleton.gltf" id="4_sjj2i"]
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lbbvm"]
+render_priority = 0
+shader = ExtResource("1_7fym1")
+shader_parameter/albedo = Color(1, 1, 1, 1)
+shader_parameter/specular = null
+shader_parameter/metallic = null
+shader_parameter/roughness = null
+shader_parameter/metallic_texture_channel = null
+shader_parameter/roughness_texture_channel = null
+shader_parameter/uv1_scale = null
+shader_parameter/uv1_offset = null
+shader_parameter/show_normals = null
+shader_parameter/show_bone_weights = 1.0
+shader_parameter/root_scale = 0.075
+shader_parameter/fast = null
+shader_parameter/render_head = true
+shader_parameter/neck_height = 0.0
+shader_parameter/phase_shift = 0.0
+shader_parameter/lod_bias = 1.0
+shader_parameter/lod_worst = 5.0
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_g5h4p"]
-size = Vector3(0.5, 0.5, 0.5)
+size = Vector3(0.5, 0.5, 0.25)
 
 [node name="C1" type="Node3D"]
 
 [node name="VoxChar" type="MeshInstance3D" parent="."]
 transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 0, 0.2, 0)
+material_override = SubResource("ShaderMaterial_lbbvm")
 cast_shadow = 0
 mesh = ExtResource("1_ct7gk")
 skeleton = NodePath("../testsm-skeleton/Armature/Skeleton3D")
 script = ExtResource("2_0ntve")
 render_head = true
 
-[node name="Rig" type="Area3D" parent="VoxChar"]
+[node name="Rig4" type="Node3D" parent="VoxChar"]
+script = ExtResource("4_gbujb")
+skeleton_path = NodePath("../../testsm-skeleton/Armature/Skeleton3D")
+mesh_path = NodePath("..")
+
+[node name="Root" type="Area3D" parent="VoxChar/Rig4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4017e-08, 0, 0.0928305)
 collision_layer = 0
 collision_mask = 0
 monitoring = false
 monitorable = false
-script = ExtResource("3_136jo")
-skeleton_path = NodePath("../../testsm-skeleton/Armature/Skeleton3D")
-mesh_path = NodePath("..")
-area_path = NodePath("")
 
-[node name="Top1" type="CollisionShape3D" parent="VoxChar/Rig"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+[node name="Shape" type="CollisionShape3D" parent="VoxChar/Rig4/Root"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.267)
+shape = SubResource("BoxShape3D_g5h4p")
+disabled = true
+
+[node name="Top1" type="Area3D" parent="VoxChar/Rig4"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="VoxChar/Rig4/Top1"]
+transform = Transform3D(1, 0, 0, 0, 0.945519, -0.325568, 0, 0.325568, 0.945519, -7.39816e-09, 0.294, 0.178996)
 shape = SubResource("BoxShape3D_g5h4p")
 
-[node name="Bottom1" type="CollisionShape3D" parent="VoxChar/Rig"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+[node name="Top2" type="Area3D" parent="VoxChar/Rig4"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="VoxChar/Rig4/Top2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.3487e-09, 0.25, -0.138086)
+shape = SubResource("BoxShape3D_g5h4p")
+
+[node name="Bottom1" type="Area3D" parent="VoxChar/Rig4"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="VoxChar/Rig4/Bottom1"]
+transform = Transform3D(1, 4.90523e-08, 8.18963e-09, -4.90523e-08, 0.945763, 0.324858, 8.18963e-09, -0.324858, 0.945763, -2.70529e-08, -0.29424, 0.179163)
+shape = SubResource("BoxShape3D_g5h4p")
+
+[node name="Bottom2" type="Area3D" parent="VoxChar/Rig4"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="VoxChar/Rig4/Bottom2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.3487e-09, -0.25, -0.138086)
 shape = SubResource("BoxShape3D_g5h4p")
 
 [node name="testsm-skeleton" parent="." instance=ExtResource("4_sjj2i")]

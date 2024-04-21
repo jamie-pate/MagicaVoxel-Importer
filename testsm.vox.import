@@ -12,7 +12,7 @@ dest_files=["res://.godot/imported/testsm.vox-70308888cc228264702c1c97f510cf4b.m
 
 [params]
 
-root_scale=0.25
+root_scale=0.1
 origin=1
 smoothing=1.0
 copy_bones_to_uv=true

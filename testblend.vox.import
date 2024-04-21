@@ -13,6 +13,6 @@ dest_files=["res://.godot/imported/testblend.vox-b5206da39dab3b65209a72cc272edb5
 [params]
 
 root_scale=0.25
-origin=1
+origin=0
 smoothing=1.0
 copy_bones_to_uv=true
