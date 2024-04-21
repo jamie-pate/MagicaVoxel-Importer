@@ -1,0 +1,129 @@
+[gd_scene load_steps=9 format=3 uid="uid://crkrp4f48n24y"]
+
+[ext_resource type="ArrayMesh" uid="uid://buudn74s87mjr" path="res://testblend.vox" id="1_gmbjd"]
+[ext_resource type="Shader" path="res://addons/MagicaVoxelImporter/points.gdshader" id="2_jh557"]
+[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_qy6vg"]
+[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/bone_rig.gd" id="3_2f30o"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_o3k8w"]
+render_priority = 0
+shader = ExtResource("2_jh557")
+shader_parameter/albedo = Color(1, 1, 1, 1)
+shader_parameter/specular = null
+shader_parameter/metallic = null
+shader_parameter/roughness = null
+shader_parameter/metallic_texture_channel = null
+shader_parameter/roughness_texture_channel = null
+shader_parameter/uv1_scale = null
+shader_parameter/uv1_offset = null
+shader_parameter/show_normals = null
+shader_parameter/show_bone_weights = 1.0
+shader_parameter/root_scale = 0.25
+shader_parameter/fast = null
+shader_parameter/render_head = true
+shader_parameter/neck_height = 0.0
+shader_parameter/phase_shift = 0.0
+shader_parameter/lod_bias = 1.0
+shader_parameter/lod_worst = 5.0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bfwpj"]
+radius = 0.925
+height = 6.75
+
+[sub_resource type="Animation" id="Animation_m3lqe"]
+resource_name = "ArmatureAction"
+length = 0.416667
+tracks/0/type = "position_3d"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Armature/Skeleton3D:Root")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = PackedFloat32Array(0, 1, 0, 0, 0.2, 0.0333333, 1, 0, 0, 0.2, 0.0666667, 1, -2.92504e-10, -0.00119709, 0.2, 0.1, 1, -9.16512e-10, -0.00375088, 0.2, 0.166667, 1, -2.63253e-09, -0.0107738, 0.2, 0.2, 1, -5.26506e-10, -0.0123699, 0.2, 0.233333, 1, 1.94691e-10, -0.0119722, 0.2, 0.266667, 1, 6.33993e-10, -0.0101743, 0.2, 0.3, 1, 1.28296e-09, -0.00751835, 0.2, 0.333333, 1, 2.02179e-09, -0.00449467, 0.2, 0.366667, 1, 2.6408e-09, -0.00196131, 0.2, 0.4, 1, 1.11822e-09, -0.000531187, 0.2, 0.416667, 1, 0, 0, 0.2)
+tracks/1/type = "rotation_3d"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Armature/Skeleton3D:Root")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = PackedFloat32Array(0, 1, -0.707107, 8.63894e-08, -8.63894e-08, 0.707107, 0.0333333, 1, -0.707107, 8.63894e-08, -8.63894e-08, 0.707107, 0.0666667, 1, -0.697653, 8.52344e-08, -8.75292e-08, 0.716436, 0.1, 1, -0.677034, 8.27153e-08, -8.99135e-08, 0.735952, 0.166667, 1, -0.617516, 7.54438e-08, -9.60962e-08, 0.786558, 0.2, 1, -0.60349, 9.32864e-08, -7.7861e-08, 0.797371, 0.233333, 1, -0.607, 9.86179e-08, -7.26323e-08, 0.794702, 0.266667, 1, -0.622752, 1.00568e-07, -7.11062e-08, 0.78242, 0.3, 1, -0.64559, 1.03378e-07, -6.87974e-08, 0.763684, 0.333333, 1, -0.67093, 1.0647e-07, -6.60931e-08, 0.741521, 0.366667, 1, -0.691547, 1.08965e-07, -6.3773e-08, 0.722331, 0.4, 1, -0.702929, 9.56662e-08, -7.71096e-08, 0.71126, 0.416667, 1, -0.707107, 8.63894e-08, -8.63894e-08, 0.707107)
+tracks/2/type = "rotation_3d"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Armature/Skeleton3D:Left1")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = PackedFloat32Array(0, 1, 0.707107, -2.0957e-09, 1.70683e-07, 0.707107, 0.0333333, 1, 0.707107, -2.0957e-09, 1.70683e-07, 0.707107, 0.0666667, 1, 0.732279, 4.09399e-09, 1.70647e-07, 0.681005, 0.1, 1, 0.783453, 1.74702e-08, 1.698e-07, 0.621452, 0.166667, 1, 0.899077, 5.36922e-08, 1.62032e-07, 0.43779, 0.2, 1, 0.919186, 6.14609e-08, 1.59247e-07, 0.393823, 0.233333, 1, 0.914407, 5.95506e-08, 1.59971e-07, 0.404796, 0.266667, 1, 0.890764, 5.06639e-08, 1.63004e-07, 0.454465, 0.3, 1, 0.850552, 3.71439e-08, 1.66606e-07, 0.525891, 0.333333, 1, 0.797378, 2.13258e-08, 1.69359e-07, 0.603481, 0.366667, 1, 0.747959, 8.07196e-09, 1.70505e-07, 0.663745, 0.4, 1, 0.718356, 6.41865e-10, 1.70695e-07, 0.695676, 0.416667, 1, 0.707107, -2.0957e-09, 1.70683e-07, 0.707107)
+tracks/3/type = "rotation_3d"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Armature/Skeleton3D:Right1")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = PackedFloat32Array(0, 1, -0.707107, -2.0957e-09, -1.70683e-07, 0.707107, 0.0333333, 1, -0.707107, -2.0957e-09, -1.70683e-07, 0.707107, 0.0666667, 1, -0.732279, 4.094e-09, -1.70647e-07, 0.681005, 0.1, 1, -0.783453, 1.74702e-08, -1.698e-07, 0.621452, 0.166667, 1, -0.899077, 5.36922e-08, -1.62032e-07, 0.43779, 0.2, 1, -0.919186, 6.1461e-08, -1.59247e-07, 0.393823, 0.233333, 1, -0.914407, 5.95506e-08, -1.59971e-07, 0.404796, 0.266667, 1, -0.890764, 5.0664e-08, -1.63004e-07, 0.454465, 0.3, 1, -0.850552, 3.71439e-08, -1.66606e-07, 0.525891, 0.333333, 1, -0.797378, 2.13258e-08, -1.69359e-07, 0.60348, 0.366667, 1, -0.747959, 8.07197e-09, -1.70505e-07, 0.663745, 0.4, 1, -0.718356, 6.4187e-10, -1.70695e-07, 0.695676, 0.416667, 1, -0.707107, -2.0957e-09, -1.70683e-07, 0.707107)
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_uxphd"]
+_data = {
+"ArmatureAction": SubResource("Animation_m3lqe")
+}
+
+[node name="C1" type="Node3D"]
+
+[node name="VoxChar" type="MeshInstance3D" parent="."]
+transform = Transform3D(-1, 0, -1.50996e-07, 0, 1, 0, 1.50996e-07, 0, -1, 0, 0.2, 0)
+material_override = SubResource("ShaderMaterial_o3k8w")
+cast_shadow = 0
+mesh = ExtResource("1_gmbjd")
+skeleton = NodePath("testsm-skeleton/Armature/Skeleton3D")
+script = ExtResource("2_qy6vg")
+render_head = true
+
+[node name="Rig" type="Area3D" parent="VoxChar"]
+collision_layer = 0
+collision_mask = 0
+monitoring = false
+monitorable = false
+script = ExtResource("3_2f30o")
+mesh_path = NodePath("..")
+skeleton_path = NodePath("../testsm-skeleton/Armature/Skeleton3D")
+
+[node name="Left1" type="CollisionShape3D" parent="VoxChar/Rig"]
+transform = Transform3D(-4.37114e-08, -1, -1.50996e-07, 1, -4.37114e-08, 1.50996e-07, -1.50996e-07, -1.50996e-07, 1, 3, 0, 0)
+shape = SubResource("CapsuleShape3D_bfwpj")
+
+[node name="Right1" type="CollisionShape3D" parent="VoxChar/Rig"]
+transform = Transform3D(4.37114e-08, -1, 1.50996e-07, -1, -4.37114e-08, -2.38419e-07, 2.38419e-07, -1.50996e-07, -1, -3, 0, 0)
+shape = SubResource("CapsuleShape3D_bfwpj")
+
+[node name="testsm-skeleton" type="Node3D" parent="VoxChar"]
+
+[node name="Armature" type="Node3D" parent="VoxChar/testsm-skeleton"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+
+[node name="Skeleton3D" type="Skeleton3D" parent="VoxChar/testsm-skeleton/Armature"]
+bones/0/name = "Root"
+bones/0/parent = -1
+bones/0/rest = Transform3D(1, 0, 2.44346e-07, -2.44346e-07, 0, 1, 0, -1, 0, 0, 0, 0.2)
+bones/0/enabled = true
+bones/0/position = Vector3(-5.26506e-10, -0.0123699, 0.2)
+bones/0/rotation = Quaternion(-0.60349, 9.32864e-08, -7.7861e-08, 0.797371)
+bones/0/scale = Vector3(1, 1, 1)
+bones/1/name = "Left1"
+bones/1/parent = 0
+bones/1/rest = Transform3D(1, -2.44346e-07, 2.38419e-07, 2.38419e-07, 1.78814e-07, -1, 2.44346e-07, 1, 1.78814e-07, 0, 0.2, 0)
+bones/1/enabled = true
+bones/1/position = Vector3(0, 0.2, 0)
+bones/1/rotation = Quaternion(0.919186, 6.14609e-08, 1.59247e-07, 0.393823)
+bones/1/scale = Vector3(1, 1, 1)
+bones/2/name = "Right1"
+bones/2/parent = 0
+bones/2/rest = Transform3D(1, 2.44346e-07, 2.38419e-07, -2.38419e-07, 0, 1, 2.44346e-07, -1, 0, 0, 0.2, 0)
+bones/2/enabled = true
+bones/2/position = Vector3(0, 0.2, 0)
+bones/2/rotation = Quaternion(-0.919186, 6.1461e-08, -1.59247e-07, 0.393823)
+bones/2/scale = Vector3(1, 1, 1)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="VoxChar/testsm-skeleton"]
+libraries = {
+"": SubResource("AnimationLibrary_uxphd")
+}

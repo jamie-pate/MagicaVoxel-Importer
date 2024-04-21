@@ -336,7 +336,7 @@ func time(desc: String):
 		print('%s %s ms' % [desc, _time - old_time])
 
 #Gets called when pressing a file gets imported / reimported
-func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
 	if !"mesh_flags" in options:
 		# allow user to specify BitField[Mesh.ArrayFormat] flags like ARRAY_FLAG_USE_8_BONE_WEIGHTS
 		options.mesh_flags = 0
@@ -350,6 +350,12 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 	var file = FileAccess.open( source_path, FileAccess.READ )
 	if !file:
 		return FileAccess.get_open_error()
+	var bones_file = FileAccess.open( "%s.bones" % [source_path], FileAccess.READ | FileAccess.COMPRESSION_ZSTD)
+	if !bones_file:
+		var err := FileAccess.get_open_error()
+		if err != ERR_FILE_NOT_FOUND:
+			printerr("Unable to open bones file %s.bones: %s" % [source_path, err])
+			return null
 
 	##################
 	#  Import Voxels #
@@ -558,8 +564,13 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 
 		time('chunk %s normal smoothing' % [chunk.data[0].chunkNum])
 		var b = 0
-		var bones := options.bones as PackedInt32Array if 'bones' in options and options.bones is PackedInt32Array else PackedInt32Array()
-		var weights := options.weights as PackedFloat32Array if 'weights' in options and options.weights is PackedFloat32Array else PackedFloat32Array()
+		var bones := PackedInt32Array()
+		var weights := PackedFloat32Array()
+		if bones_file:
+			var bones_len := bones_file.get_32()
+			bones = bytes_to_var(bones_file.get_buffer(bones_len))
+			var weights_len := bones_file.get_32()
+			weights = bytes_to_var(bones_file.get_buffer(weights_len))
 
 		var max_bone := 0
 		var bone_colors := PackedColorArray()
@@ -568,7 +579,7 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 				max_bone = bone_id if bone_id > max_bone else max_bone
 			bone_colors = _gen_colors(max_bone)
 		if BONE_DBG && (len(bones) || len(weights)):
-			print('bones: %s weights: %s' % [len(bones), len(weights)])
+			print('bones: %s weights: %s %s %s' % [len(bones), len(weights), bones.slice(0, 10), weights.slice(0, 10)])
 		if MESH_DBG:
 			print('voxels: %s' % [len(chunk.data)])
 		var weights_sz = 8 if options.mesh_flags & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS else 4
@@ -626,7 +637,7 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 	var mesh: ArrayMesh
 	time('set material')
 	if old_mesh:
-		old_mesh.surface_remove(0)
+		old_mesh.clear_surfaces()
 		mesh = st.commit(old_mesh, options.mesh_flags)
 	else:
 		mesh = st.commit(null, options.mesh_flags)
@@ -639,12 +650,13 @@ func load_vox( source_path, options={bones=[],weights=[],mesh_flags=0}, platform
 	return mesh
 
 func _gen_colors(count: int) -> PackedColorArray:
+	count = max(count, 4)
 	var result := PackedColorArray()
-	var h_repeat := 3.0
+	var h_repeat: float = 3.0
 	var h_repeat_half := h_repeat * 0.5
 	for i in count:
 		var h := _fract(float(i) / float(count) * h_repeat)
-		var s: float = floor(float(i) / float(count) * h_repeat_half) / h_repeat_half * 0.5 + 0.5
+		var s: float = 1.0 if count <= 4 else floor(float(i) / float(count) * h_repeat_half) / h_repeat_half * 0.5 + 0.5
 		var v: float = floor(float(i) / float(count) * 2.0) / 2.0 * 0.5 + 0.5
 		result.append(Color.from_hsv(h, s , v))
 	return result

@@ -39,7 +39,7 @@ class ImportPlugin extends EditorImportPlugin:
 		return "Mesh"
 
 	#The extenison the imported file will have
-	func _get_save_extension():
+	func _get_save_extension() -> String:
 		return 'mesh'
 
 	#Returns an Array or Dictionaries that declare which options exist.
@@ -52,8 +52,6 @@ class ImportPlugin extends EditorImportPlugin:
 				'hint_string': 'Auto Center,Use Transform3D'},
 			{'name': 'smoothing', 'default_value': 1.0,
 				'property_hint': PROPERTY_HINT_RANGE, 'hint_string': '0.0,10.0,0.1'},
-			{'name': 'bones', 'default_value': [], 'usage': PROPERTY_USAGE_STORAGE},
-			{'name': 'weights', 'default_value': [], 'usage': PROPERTY_USAGE_STORAGE},
 			{'name': 'copy_bones_to_uv', 'default_value': false,
 				'property_hint': PROPERTY_HINT_ENUM,
 				'hint_string': 'Off,Debug'
@@ -76,13 +74,13 @@ class ImportPlugin extends EditorImportPlugin:
 
 	func _get_import_order():
 		return 0
-	
+
 	func _get_option_visibility(path, option_name, options):
 		return true
 
 	func _import( source_path, save_path, options, platforms, gen_files ):
 		var old_mesh: ArrayMesh
-		if FileAccess.file_exists(save_path) and false:
+		if FileAccess.file_exists(save_path):
 			old_mesh = ResourceLoader.load(save_path)
 		var vi = VoxelImport.new()
 		var mesh: ArrayMesh = vi.load_vox(source_path, options, platforms, gen_files, old_mesh)
@@ -96,4 +94,4 @@ class ImportPlugin extends EditorImportPlugin:
 		return _save(mesh, full_path)
 
 	func _save(mesh, full_path):
-		return ResourceSaver.save(mesh, full_path)
+		return ResourceSaver.save(mesh, full_path, ResourceSaver.FLAG_CHANGE_PATH)
