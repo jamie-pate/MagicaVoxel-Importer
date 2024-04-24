@@ -20,7 +20,8 @@ class MV extends RefCounted:
 		var result = {}
 		for i in size:
 			# dict values are always strings...
-			result[mv_str(file)] = mv_str(file)
+			var key = mv_str(file)
+			result[key] = mv_str(file)
 		return result
 
 class MVChunk extends RefCounted:

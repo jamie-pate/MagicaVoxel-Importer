@@ -245,6 +245,7 @@ func _collect_bones():
 					found = true
 					bone_count += 1
 					var skel_bone_name = "%s%s" % [bone_prefix, bone_name]
+
 					var bone := skel.find_bone(skel_bone_name)
 					if bone == -1:
 						fail.append('Unable to find bone %s' % [skel_bone_name])
