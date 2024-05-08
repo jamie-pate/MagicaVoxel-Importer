@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix,depth_draw_always,diffuse_burley,specular_schlick_ggx, skip_vertex_transform;
+render_mode blend_mix,depth_draw_opaque,diffuse_burley,specular_schlick_ggx, skip_vertex_transform;
 uniform vec4 albedo : source_color;
 uniform float specular;
 uniform float metallic;
@@ -19,6 +19,7 @@ uniform bool fast;
 uniform bool render_head = true;
 uniform float neck_height = 40.0;
 uniform float phase_shift: hint_range(0, 1) = 0.0;
+uniform bool super_black = false;
 // increase lod bias to remove more voxels closer to the camera
 uniform float lod_bias = 1.0;
 // worst case lod reduction
@@ -179,6 +180,9 @@ void vertex() {
 void fragment() {
 	vec2 base_uv = UV;
 	ALBEDO = albedo.rgb * COLOR.rgb;
+	if (super_black) {
+		ALBEDO = ALBEDO * 0.99 + vec3(0.001);
+	}
 	float aspect_x = min(1.0, voxel_size.x / voxel_size.y * 0.5);
 	float aspect_y = min(1.0, voxel_size.y / voxel_size.x * 0.5);
 	vec2 edge = abs(POINT_COORD - 0.5) - (vec2(aspect_x, aspect_y));

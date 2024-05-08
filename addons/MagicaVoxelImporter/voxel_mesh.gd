@@ -4,6 +4,7 @@ extends MeshInstance3D
 @export var neck_height: float: set = _set_neck_height
 @export var render_head: bool: set = _set_render_head
 @export var phase_shift: float: set = _set_phase_shift
+@export var super_black: bool: set = _set_super_black
 
 func _ready():
 	_set_neck_height(neck_height)
@@ -60,6 +61,14 @@ func _set_phase_shift(value):
 		var mat = get_instance_mat()
 		if mat && mat.get_shader_parameter("phase_shift") != value:
 			mat.set_shader_parameter("phase_shift", value)
+
+
+func _set_super_black(value):
+	super_black = value
+	if is_inside_tree():
+		var mat = get_instance_mat()
+		if mat && mat.get_shader_parameter("super_black") != value:
+			mat.set_shader_parameter("super_black", value)
 
 
 ## Get a material that's unique to this instance
