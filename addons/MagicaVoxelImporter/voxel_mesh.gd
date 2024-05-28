@@ -50,9 +50,23 @@ func _set_neck_height(value):
 func _set_render_head(value):
 	render_head = value
 	if is_inside_tree():
-		var mat = get_instance_mat()
+		var mat:ShaderMaterial= get_instance_mat()
+		var neck_bone_index := -1
+		var head_bone_index := -1
 		if mat && mat.get_shader_parameter("render_head") != value:
-			mat.set_shader_parameter("render_head", value)
+			if !value:
+				for i in %Skeleton3D.get_bone_count():
+					var bone_name = %Skeleton3D.get_bone_name(i)
+					if bone_name == "Head":
+						head_bone_index = i
+					if bone_name == "Neck":
+						neck_bone_index = i
+				mat.set_shader_parameter("head_bone_index", head_bone_index)
+				mat.set_shader_parameter("neck_bone_index", neck_bone_index)
+			if neck_bone_index >= 0 && head_bone_index >= 0 || value:
+				mat.set_shader_parameter("render_head", value)
+			#mat.inspect_native_shader_code()
+
 
 
 func _set_phase_shift(value):

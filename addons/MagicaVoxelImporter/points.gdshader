@@ -17,7 +17,9 @@ varying vec2 voxel_size;
 uniform float root_scale = 1.0;
 uniform bool fast;
 uniform bool render_head = true;
-uniform float neck_height = 40.0;
+// script is responsible for not setting render_head = false if these indexes aren't set
+uniform uint neck_bone_index = 0;
+uniform uint head_bone_index = 0;
 uniform float phase_shift: hint_range(0, 1) = 0.0;
 uniform bool super_black = false;
 // increase lod bias to remove more voxels closer to the camera
@@ -33,7 +35,7 @@ const float MAX_UINT_INV_2 = 2.0 / float(~0u);
 const float PHASE_TRANSLATE = 0.01;
 const float PHASE_SHRINK = 0.25;
 
-// #ifndef GLES3
+#ifndef GLES2
 uint pcg_hash(uint input) {
 	// https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
     uint state = input * 747796405u + 2891336453u;
@@ -52,18 +54,28 @@ float phase_shift_component(float seed, float value, float amount) {
 
 vec3 phase_shift_vertex(vec3 value, float amount) {
 	return vec3(
-		phase_shift_component(value.x + value.z + amount, value.x, amount),
-		phase_shift_component(value.y + value.x + amount, value.y, amount),
-		phase_shift_component(value.z + value.y + amount, value.z, amount)
+		phase_shift_component(value.x + value.z + amount + TIME, value.x, amount),
+		phase_shift_component(value.y + value.x + amount + TIME, value.y, amount),
+		phase_shift_component(value.z + value.y + amount + TIME, value.z, amount)
 	);
 }
-// #endif
+#endif
 
 void vertex() {
-	if (!render_head && VERTEX.y > neck_height) {
+	float head_or_neck_bone = 0.0;
+	for (int i = 0; i < 4; ++i) {
+		if (BONE_INDICES[i] == neck_bone_index) {
+			head_or_neck_bone += BONE_WEIGHTS[i];
+		}
+		if (BONE_INDICES[i] == head_bone_index) {
+			head_or_neck_bone += BONE_WEIGHTS[i];
+		}
+	}
+	if (!render_head && head_or_neck_bone > 0.0) {
 		voxel_size = vec2(0.0);
 	} else {
-		COLOR.rgb = mix( pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)), COLOR.rgb* (1.0 / 12.92), lessThan(COLOR.rgb,vec3(0.04045)) );
+		// color correction?
+		COLOR.rgb = mix( pow((COLOR.rgb + vec3(0.055)) * (1.0 / (1.0 + 0.055)), vec3(2.4)), COLOR.rgb * (1.0 / 12.92), lessThan(COLOR.rgb,vec3(0.04045)) );
 		float max_screen_size = max(VIEWPORT_SIZE.x, VIEWPORT_SIZE.y);
 		ROUGHNESS=roughness;
 		vec4 bone_color = vec4(UV, UV2);
@@ -71,6 +83,7 @@ void vertex() {
 		vec3 half_voxel = vec3(0.5) * root_scale;
 		bool ortho = PROJECTION_MATRIX[3][3] != 0.0;
 		mat4 mvp = PROJECTION_MATRIX * MODELVIEW_MATRIX;
+
 		if (fast && !ortho) {
 			// broken with root scale
 			vec4 screen = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
@@ -140,21 +153,18 @@ void vertex() {
 			// each level of reduction will produce even fewer voxels
 			float reduction = min(lod_worst, ceil(lod_bias / mvs));
 
-			if (
-				mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y + 1.0, reduction) >= 1.0 && mod(VERTEX.z, reduction) >= 1.0 ||
-				mod(VERTEX.x + 1.0, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z, reduction) >= 1.0 ||
-				mod(VERTEX.x + 1.0, reduction) >= 1.0 && mod(VERTEX.y + 1.0, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0 ||
-				mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0
-			) {
+			if (VERTEX_ID % int(floor(reduction)) >= 1) {
 				voxel_size = vec2(0.0);
+			} else if (reduction > 1.0) {
+				voxel_size *= reduction * 1.0;
 			}
 		}
-		// #ifndef GLES3
+		#ifndef GLES2
 		if (phase_shift > 0.0) {
 			VERTEX = phase_shift_vertex(VERTEX, phase_shift * voxel_size.x * PHASE_TRANSLATE);
 			voxel_size *= 1.0 - phase_shift * (1.0 - PHASE_SHRINK);
 		}
-		// #endif
+		#endif
 		POINT_SIZE = max(voxel_size.x, voxel_size.y);
 
 		if (show_normals > 0.0) {
@@ -174,6 +184,7 @@ void vertex() {
 		VERTEX.xyz = vert.xyz;
 		// SEE ENSURE_CORRECT_NORMALS in the godot scene.glsl if we use shear etc and it looks weird
 		NORMAL = normalize((MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+
 	}
 }
 
