@@ -138,14 +138,16 @@ void vertex() {
 		if (mvs < lod_bias) {
 			// each level of reduction will produce even fewer voxels
 			float reduction = min(lod_worst, ceil(lod_bias / mvs));
-
+			vec3 v = VERTEX / root_scale;
 			if (
-				mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y + 1.0, reduction) >= 1.0 && mod(VERTEX.z, reduction) >= 1.0 ||
-				mod(VERTEX.x + 1.0, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z, reduction) >= 1.0 ||
-				mod(VERTEX.x + 1.0, reduction) >= 1.0 && mod(VERTEX.y + 1.0, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0 ||
-				mod(VERTEX.x, reduction) >= 1.0 && mod(VERTEX.y, reduction) >= 1.0 && mod(VERTEX.z + 1.0, reduction) >= 1.0
+				mod(v.x, reduction) >= 1.0 && mod(v.y + 1.0, reduction) >= 1.0 && mod(v.z, reduction) >= 1.0 ||
+				mod(v.x + 1.0, reduction) >= 1.0 && mod(v.y, reduction) >= 1.0 && mod(v.z, reduction) >= 1.0 ||
+				mod(v.x + 1.0, reduction) >= 1.0 && mod(v.y + 1.0, reduction) >= 1.0 && mod(v.z + 1.0, reduction) >= 1.0 ||
+				mod(v.x, reduction) >= 1.0 && mod(v.y, reduction) >= 1.0 && mod(v.z + 1.0, reduction) >= 1.0
 			) {
 				voxel_size = vec2(0.0);
+			} else if (reduction > 0.0) {
+				voxel_size *= reduction;
 			}
 		}
 		// #ifndef GLES3
