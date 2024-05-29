@@ -1,13 +1,11 @@
 @tool
 extends MeshInstance3D
 
-@export var neck_height: float: set = _set_neck_height
 @export var render_head: bool: set = _set_render_head
 @export var phase_shift: float: set = _set_phase_shift
 @export var super_black: bool: set = _set_super_black
 
 func _ready():
-	_set_neck_height(neck_height)
 	_set_render_head(true)
 
 
@@ -40,12 +38,25 @@ func _get_mats() -> Array:
 	return result
 
 
-func _set_neck_height(value):
-	neck_height = value
-	if mesh:
-		for mat in _get_mats():
-			mat.set_shader_parameter('neck_height', value)
-
+func get_neck_height():
+	var skel := get_node_or_null(skeleton) as Skeleton3D
+	var height := 0.0
+	if skel:
+		for i in skel.get_bone_count():
+			# assuming default godot bonemap names for bones
+			var bone_name = skel.get_bone_name(i)
+			if bone_name == "Neck":
+				var tfm := skel.get_bone_rest(i)
+				height += tfm.origin.y
+				var p = i
+				while true:
+					p = skel.get_bone_parent(p)
+					if p < 0:
+						break
+					tfm = skel.get_bone_rest(p)
+					height += tfm.origin.y
+				break
+	return height
 
 func _set_render_head(value):
 	render_head = value
@@ -55,14 +66,17 @@ func _set_render_head(value):
 		var head_bone_index := -1
 		if mat && mat.get_shader_parameter("render_head") != value:
 			if !value:
-				for i in %Skeleton3D.get_bone_count():
-					var bone_name = %Skeleton3D.get_bone_name(i)
-					if bone_name == "Head":
-						head_bone_index = i
-					if bone_name == "Neck":
-						neck_bone_index = i
-				mat.set_shader_parameter("head_bone_index", head_bone_index)
-				mat.set_shader_parameter("neck_bone_index", neck_bone_index)
+				var skel := get_node_or_null(skeleton) as Skeleton3D
+				if skel:
+					for i in skel.get_bone_count():
+						# assuming default godot bonemap names for bones
+						var bone_name = skel.get_bone_name(i)
+						if bone_name == "Head":
+							head_bone_index = i
+						if bone_name == "Neck":
+							neck_bone_index = i
+					mat.set_shader_parameter("head_bone_index", head_bone_index)
+					mat.set_shader_parameter("neck_bone_index", neck_bone_index)
 			if neck_bone_index >= 0 && head_bone_index >= 0 || value:
 				mat.set_shader_parameter("render_head", value)
 			#mat.inspect_native_shader_code()
