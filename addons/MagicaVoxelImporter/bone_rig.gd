@@ -55,6 +55,7 @@ func _set_upgrade_3to4(value):
 		area.monitoring = false
 		upgraded.add_child(area)
 		area.owner = owner
+		area.input_ray_pickable = false
 		for s in bones[bone_name]:
 			var new_s = s.duplicate()
 			assert(new_s.transform == s.transform)

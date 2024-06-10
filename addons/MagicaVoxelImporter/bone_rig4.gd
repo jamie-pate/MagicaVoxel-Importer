@@ -105,6 +105,7 @@ func _set_skeleton_path(value: NodePath):
 
 
 func _collect_bones_once():
+	var EditorInterface = Engine.get_singleton("EditorInterface")
 	if is_inside_tree() && !collect_bones && Engine.is_editor_hint():
 		if !self in EditorInterface.get_selection().get_selected_nodes():
 			return
