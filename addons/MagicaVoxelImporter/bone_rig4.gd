@@ -105,8 +105,8 @@ func _set_skeleton_path(value: NodePath):
 
 
 func _collect_bones_once():
-	var EditorInterface = Engine.get_singleton("EditorInterface")
 	if is_inside_tree() && !collect_bones && Engine.is_editor_hint():
+		var EditorInterface = Engine.get_singleton("EditorInterface")
 		if !self in EditorInterface.get_selection().get_selected_nodes():
 			return
 		if _collecting_bones:
@@ -399,7 +399,7 @@ func re_import():
 		var mesh := mi.mesh as ArrayMesh
 		if !mesh:
 			return
-		var ei := EditorInterface
+		var ei = Engine.get_singleton("EditorInterface")
 		var bc: Control
 		bc = ei.get_base_control()
 		if bc:
