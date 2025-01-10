@@ -1,0 +1,120 @@
+[gd_scene load_steps=14 format=3 uid="uid://dq61jnlrhttcu"]
+
+[ext_resource type="Script" path="res://xr_main.gd" id="1_a202f"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_a202f"]
+size = Vector3(0.1, 0.1, 0.2)
+
+[sub_resource type="PrismMesh" id="PrismMesh_os6jl"]
+size = Vector3(0.05, 0.05, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a202f"]
+albedo_color = Color(1, 0, 0.160784, 1)
+
+[sub_resource type="PrismMesh" id="PrismMesh_drkr4"]
+size = Vector3(0.05, 0.05, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_noarx"]
+albedo_color = Color(1, 0.968627, 0.160784, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_d5wqy"]
+radius = 0.1
+height = 0.1
+radial_segments = 6
+rings = 6
+
+[sub_resource type="SphereMesh" id="SphereMesh_j0uha"]
+radius = 0.1
+height = 0.1
+radial_segments = 6
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a0tk4"]
+albedo_color = Color(0, 0, 1, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_6i4ma"]
+radius = 0.1
+height = 0.1
+radial_segments = 6
+rings = 6
+
+[sub_resource type="SphereMesh" id="SphereMesh_j7m1q"]
+radius = 0.1
+height = 0.1
+radial_segments = 6
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_r3fl7"]
+albedo_color = Color(0, 1, 0.116667, 1)
+
+[sub_resource type="Environment" id="Environment_a202f"]
+background_mode = 1
+background_color = Color(0.448146, 0.448146, 0.448146, 0)
+
+[node name="Node3D" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("1_a202f")
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+
+[node name="XRControllerLeftHand" type="XRController3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0, -1)
+tracker = &"left_hand"
+show_when_tracked = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="XROrigin3D/XRControllerLeftHand"]
+visible = false
+mesh = SubResource("BoxMesh_a202f")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="XROrigin3D/XRControllerLeftHand"]
+transform = Transform3D(1, 0, -1.06581e-14, 0, 1, 0, 1.06581e-14, 0, 1, 0, 0, -0.144145)
+mesh = SubResource("PrismMesh_os6jl")
+surface_material_override/0 = SubResource("StandardMaterial3D_a202f")
+
+[node name="XRControllerRightHand" type="XRController3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, -1)
+tracker = &"right_hand"
+show_when_tracked = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="XROrigin3D/XRControllerRightHand"]
+visible = false
+mesh = SubResource("BoxMesh_a202f")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="XROrigin3D/XRControllerRightHand"]
+transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 0, 0, -0.144145)
+mesh = SubResource("PrismMesh_drkr4")
+surface_material_override/0 = SubResource("StandardMaterial3D_noarx")
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+
+[node name="XRNode3D" type="XRNode3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -1)
+tracker = &"/user/hand_tracker/left"
+show_when_tracked = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="XROrigin3D/XRNode3D"]
+mesh = SubResource("SphereMesh_d5wqy")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="XROrigin3D/XRNode3D"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, -0.144145)
+mesh = SubResource("SphereMesh_j0uha")
+surface_material_override/0 = SubResource("StandardMaterial3D_a0tk4")
+
+[node name="XRNode3D2" type="XRNode3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -1)
+tracker = &"/user/hand_tracker/right"
+show_when_tracked = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="XROrigin3D/XRNode3D2"]
+mesh = SubResource("SphereMesh_6i4ma")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="XROrigin3D/XRNode3D2"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, -0.144145)
+mesh = SubResource("SphereMesh_j7m1q")
+surface_material_override/0 = SubResource("StandardMaterial3D_r3fl7")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_a202f")
