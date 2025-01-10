@@ -12,7 +12,7 @@ config_version=5
 
 config/name="govox"
 run/main_scene="res://Main.tscn"
-config/features=PackedStringArray("4.2")
+config/features=PackedStringArray("4.3")
 config/icon="res://icon.png"
 
 [display]
@@ -25,4 +25,11 @@ enabled=PackedStringArray("res://addons/MagicaVoxelImporter/plugin.cfg")
 
 [filesystem]
 
+import/blender/enabled=false
 import/fbx/enabled=false
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
