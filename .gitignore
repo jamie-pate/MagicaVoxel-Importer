@@ -1,2 +1,4 @@
 /.godot
 *.blend1
+/addons/godotopenxrvendors
+/android

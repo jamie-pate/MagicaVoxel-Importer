@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="govox"
+config/name="MagicaVoxelImporter"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.3")
 config/icon="res://icon.png"
@@ -30,6 +30,15 @@ import/fbx/enabled=false
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+
+[xr]
+
+openxr/enabled=true
+openxr/environment_blend_mode=2
+openxr/startup_alert=false
+openxr/extensions/hand_interaction_profile=true
+openxr/extensions/eye_gaze_interaction=true
+shaders/enabled=true
+openxr/extensions/hand_tracking_unobstructed_data_source=true
