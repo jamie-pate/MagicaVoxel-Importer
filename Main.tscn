@@ -11,12 +11,9 @@ size = Vector2(5, 5)
 [node name="Node3D" type="Node3D"]
 script = ExtResource("1_g81ps")
 
-[node name="Label" type="Label" parent="."]
-offset_left = 44.0
-offset_top = 28.0
-offset_right = 84.0
-offset_bottom = 51.0
-theme_override_font_sizes/font_size = 32
+[node name="Label" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.481183, -0.744532)
+text = "RENDERER"
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 mesh = ExtResource("1_vpkrw")
