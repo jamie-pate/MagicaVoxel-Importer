@@ -141,7 +141,8 @@ void vertex() {
 			vec2 close = min(voxel_size * 10.0, max(0.0, 1.0 - voxel.z) * voxel_size * 200.0);
 			vec2 edge = vec2(min(1.0, VIEWPORT_SIZE.y / VIEWPORT_SIZE.x), min(1.0, VIEWPORT_SIZE.x / VIEWPORT_SIZE.y));
 			vec2 edge_boost = max(vec2(0.0), abs_display_coord - edge) * close;
-			voxel_size.y *= -1.0;
+			// For all targets except OpenGL+OpenXR y is a negative value here..
+			voxel_size.y = abs(voxel_size.y);
 			voxel_size += edge_boost * 0.1;
 			voxel_size *= vp_half;
 		}
