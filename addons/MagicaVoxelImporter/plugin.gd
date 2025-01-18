@@ -55,10 +55,14 @@ class ImportPlugin extends EditorImportPlugin:
 			{'name': 'copy_bones_to_uv', 'default_value': false,
 				'property_hint': PROPERTY_HINT_ENUM,
 				'hint_string': 'Off,Debug'
+			},
+			{
+				'name': 'cull_interior_regions',
+				'default_value': true,
+				'property_hint': PROPERTY_HINT_ENUM,
+				'hint_string': 'No,Yes'
 			}
 		]
-		#options.append( { "name":"Pack in scene", "default_value":false } )
-		#options.append( { "name":"target_path", "default_value":"" } )
 		return options
 
 	#The Number of presets

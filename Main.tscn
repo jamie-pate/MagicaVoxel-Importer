@@ -1,8 +1,8 @@
 [gd_scene load_steps=6 format=3 uid="uid://dawxocmrrolv3"]
 
 [ext_resource type="Script" path="res://main.gd" id="1_g81ps"]
-[ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="1_vpkrw"]
 [ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_8hjk1"]
+[ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="2_tdalp"]
 [ext_resource type="PackedScene" uid="uid://dq61jnlrhttcu" path="res://xr_main.tscn" id="4_aia8b"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_3unyn"]
@@ -12,11 +12,14 @@ size = Vector2(5, 5)
 script = ExtResource("1_g81ps")
 
 [node name="Label" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.481183, -0.744532)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.176565, 0.373792)
 text = "RENDERER"
+font_size = 10
+outline_size = 5
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = ExtResource("1_vpkrw")
+transform = Transform3D(0.901448, 0, -0.432888, -0.060815, 0.990083, -0.126641, 0.428595, 0.140487, 0.892508, 0, 0.173777, 0)
+mesh = ExtResource("2_tdalp")
 script = ExtResource("2_8hjk1")
 render_head = true
 
@@ -30,10 +33,22 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.64577, 1.38055, -0.408267)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.00435, 0.123599, -2.57619)
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.952144, -0.0691395, 0.297728, -0.0636702, 0.907845, 0.414443, -0.298945, -0.413566, 0.859997, 0.299738, 0.612639, 0.817164)
+transform = Transform3D(0.999976, 0.00698126, 0, -0.00693846, 0.993845, 0.110567, 0.000771897, -0.110564, 0.993869, 0.0955453, 0.612639, 0.921523)
 
-[node name="Node3D" parent="." instance=ExtResource("4_aia8b")]
+[node name="XR" parent="." instance=ExtResource("4_aia8b")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.603864, 1)
+auto_enabled = true
 
 [node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
 mesh = SubResource("PlaneMesh_3unyn")
+
+[node name="Control" type="Button" parent="."]
+offset_right = 284.0
+offset_bottom = 56.0
+text = "Benchmark"
+
+[node name="Timer" type="Timer" parent="."]
+
+[connection signal="button_pressed" from="XR" to="." method="_on_xr_button_pressed"]
+[connection signal="pressed" from="Control" to="." method="_on_control_pressed"]
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

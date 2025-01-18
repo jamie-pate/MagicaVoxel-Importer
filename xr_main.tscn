@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://dq61jnlrhttcu"]
+[gd_scene load_steps=15 format=3 uid="uid://dq61jnlrhttcu"]
 
 [ext_resource type="Script" path="res://xr_main.gd" id="1_a202f"]
 
@@ -32,6 +32,9 @@ rings = 6
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a0tk4"]
 albedo_color = Color(0, 0, 1, 1)
 
+[sub_resource type="SphereShape3D" id="SphereShape3D_ha8bo"]
+radius = 0.1
+
 [sub_resource type="SphereMesh" id="SphereMesh_6i4ma"]
 radius = 0.1
 height = 0.1
@@ -51,14 +54,14 @@ albedo_color = Color(0, 1, 0.116667, 1)
 background_mode = 1
 background_color = Color(0.448146, 0.448146, 0.448146, 0)
 
-[node name="Node3D" type="Node3D"]
+[node name="XR" type="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 script = ExtResource("1_a202f")
 
 [node name="XROrigin3D" type="XROrigin3D" parent="."]
 
 [node name="XRControllerLeftHand" type="XRController3D" parent="XROrigin3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 0, -1)
 tracker = &"left_hand"
 show_when_tracked = true
 
@@ -67,12 +70,12 @@ visible = false
 mesh = SubResource("BoxMesh_a202f")
 
 [node name="MeshInstance3D2" type="MeshInstance3D" parent="XROrigin3D/XRControllerLeftHand"]
-transform = Transform3D(1, 0, -1.06581e-14, 0, 1, 0, 1.06581e-14, 0, 1, 0, 0, -0.144145)
+transform = Transform3D(1, 0, -1.06581e-14, 0, 1, 0, 1.06581e-14, 0, 1, 0, 0, -0.144)
 mesh = SubResource("PrismMesh_os6jl")
 surface_material_override/0 = SubResource("StandardMaterial3D_a202f")
 
 [node name="XRControllerRightHand" type="XRController3D" parent="XROrigin3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 0, -1)
 tracker = &"right_hand"
 show_when_tracked = true
 
@@ -81,14 +84,14 @@ visible = false
 mesh = SubResource("BoxMesh_a202f")
 
 [node name="MeshInstance3D2" type="MeshInstance3D" parent="XROrigin3D/XRControllerRightHand"]
-transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 0, 0, -0.144145)
+transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, 0, 0, -0.144)
 mesh = SubResource("PrismMesh_drkr4")
 surface_material_override/0 = SubResource("StandardMaterial3D_noarx")
 
 [node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
 
 [node name="XRNode3D" type="XRNode3D" parent="XROrigin3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -1)
 tracker = &"/user/hand_tracker/left"
 show_when_tracked = true
 
@@ -100,8 +103,13 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, 
 mesh = SubResource("SphereMesh_j0uha")
 surface_material_override/0 = SubResource("StandardMaterial3D_a0tk4")
 
+[node name="Area3D" type="Area3D" parent="XROrigin3D/XRNode3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="XROrigin3D/XRNode3D/Area3D"]
+shape = SubResource("SphereShape3D_ha8bo")
+
 [node name="XRNode3D2" type="XRNode3D" parent="XROrigin3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -1)
 tracker = &"/user/hand_tracker/right"
 show_when_tracked = true
 
@@ -113,8 +121,17 @@ transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 0, 0, 
 mesh = SubResource("SphereMesh_j7m1q")
 surface_material_override/0 = SubResource("StandardMaterial3D_r3fl7")
 
+[node name="Area3D" type="Area3D" parent="XROrigin3D/XRNode3D2"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="XROrigin3D/XRNode3D2/Area3D"]
+shape = SubResource("SphereShape3D_ha8bo")
+
 [node name="OmniLight3D" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_a202f")
+
+[connection signal="button_pressed" from="XROrigin3D/XRControllerLeftHand" to="." method="_on_xr_controller_left_hand_button_pressed"]
+[connection signal="button_pressed" from="XROrigin3D/XRControllerRightHand" to="." method="_on_xr_controller_right_hand_button_pressed"]
+[connection signal="area_entered" from="XROrigin3D/XRNode3D/Area3D" to="." method="_on_area_3d_area_entered"]

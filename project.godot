@@ -30,15 +30,14 @@ import/fbx/enabled=false
 
 [rendering]
 
-renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
 
 [xr]
 
 openxr/enabled=true
+openxr/reference_space=0
 openxr/environment_blend_mode=2
 openxr/startup_alert=false
-openxr/extensions/hand_interaction_profile=true
-openxr/extensions/eye_gaze_interaction=true
 shaders/enabled=true
 openxr/extensions/hand_tracking_unobstructed_data_source=true

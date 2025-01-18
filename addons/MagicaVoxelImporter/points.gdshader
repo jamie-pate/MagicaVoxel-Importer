@@ -22,8 +22,9 @@ uniform uint neck_bone_index = 0;
 uniform uint head_bone_index = 0;
 uniform float phase_shift: hint_range(0, 1) = 0.0;
 uniform bool super_black = false;
-// increase lod bias to remove more voxels closer to the camera
-uniform float lod_bias = 1.0;
+// increase lod bias to remove more voxels when closer to the camera
+// 2.0 means when each voxel is only 2px we start rendering half the voxels
+uniform float lod_bias = 2.0;
 // worst case lod reduction
 // 5.0 = at most discard 4/5 voxels on each axis.
 // limiting this is somehow faster than allowing the whole mesh to be discarded.
@@ -83,6 +84,9 @@ void vertex() {
 		vec3 half_voxel = vec3(0.5) * root_scale;
 		bool ortho = PROJECTION_MATRIX[3][3] != 0.0;
 		mat4 mvp = PROJECTION_MATRIX * MODELVIEW_MATRIX;
+		vec3 nt_normal = NORMAL;
+		// SEE ENSURE_CORRECT_NORMALS in the godot scene.glsl if we use shear etc and it looks weird
+		NORMAL = normalize((MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 
 		if (fast && !ortho) {
 			// broken with root scale
@@ -145,6 +149,17 @@ void vertex() {
 			voxel_size.y = abs(voxel_size.y);
 			voxel_size += edge_boost * 0.1;
 			voxel_size *= vp_half;
+			if (!ortho) {
+				vec4 view_dir = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
+				view_dir.xyz /= view_dir.w;
+				// Direction from camera to voxel
+				float cull_normal = dot(normalize(view_dir.xyz), NORMAL);
+				// Cull voxels facing away from the camera..
+				// allow voxels somewhat facing the camera so we keep 'rim' voxels
+				if (cull_normal > 0.5) {
+					voxel_size = vec2(0.0);
+				}
+			}
 		}
 		// screen door transparency if the voxel size is too small, reduces depth buffer overwrites
 		// which improves performance a lot
@@ -160,17 +175,15 @@ void vertex() {
 				voxel_size *= reduction * 1.0;
 			}
 		}
-		#ifndef GLES2
 		if (phase_shift > 0.0) {
 			VERTEX = phase_shift_vertex(VERTEX, phase_shift * voxel_size.x * PHASE_TRANSLATE);
 			voxel_size *= 1.0 - phase_shift * (1.0 - PHASE_SHRINK);
 		}
-		#endif
 		POINT_SIZE = max(voxel_size.x, voxel_size.y);
 
 		if (show_normals > 0.0) {
-			COLOR = mix(COLOR, vec4(NORMAL, 1.0), show_normals);
-			if (length(NORMAL) == 0.0) {
+			COLOR = mix(COLOR, vec4(nt_normal, 1.0), show_normals);
+			if (length(nt_normal) == 0.0) {
 				COLOR = vec4(1.0, 0, 1.0, 0);
 			}
 		}
@@ -178,14 +191,11 @@ void vertex() {
 			COLOR = mix(COLOR, bone_color, show_bone_weights);
 		}
 
-		// because of skip_vertex_transform.
-		// which we need because VERTEX.z isn't transformed by skeletons?
+		// needed due to skip_vertex_transform
+		// which we need because VERTEX.z isn't transformed by skeletons
 		vec4 vert = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
 		vert.xyz /= vert.w;
 		VERTEX.xyz = vert.xyz;
-		// SEE ENSURE_CORRECT_NORMALS in the godot scene.glsl if we use shear etc and it looks weird
-		NORMAL = normalize((MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
-
 	}
 }
 

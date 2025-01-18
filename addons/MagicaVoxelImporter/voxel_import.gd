@@ -43,8 +43,12 @@ class MVVoxels extends RefCounted:
 	var pos := Vector3(0,0,0)
 	var color_idx: int
 	var color: Color
-	var normal := Vector3(0, 0, 0)
-	var neighbour_normals := Vector3(0, 0, 0)
+	var normal := Vector3()
+	var neighbour_normals := Vector3()
+	# Similar to normals, but no smoothing.
+	var neighbour_vector := Vector3()
+	var neighbour_count := 0
+	var culled := false
 
 	# contain which chunk we are in so we can find it's name later?
 	var chunkNum = -1
@@ -60,6 +64,15 @@ class MVVoxels extends RefCounted:
 
 	func _to_string():
 		return 'MVVoxels pos:%s color:%s normal:%s chunkNum:%s' % [pos, color, normal, chunkNum]
+
+class ChunkData extends RefCounted:
+	var data: Array[MVVoxels]
+	var vox: VoxData
+	var numVoxels: int
+
+	func _init(size: Vector3i, _numVoxels: int):
+		vox = VoxData.new(size)
+		numVoxels = _numVoxels
 
 
 class VoxData extends RefCounted:
@@ -362,7 +375,7 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 	#  Import Voxels #
 	##################
 	var colors = null
-	var data = []
+	var data: Array[ChunkData]
 	var tfm := {}
 	var nodes := {}
 	var groups := {}
@@ -375,14 +388,14 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 	var version = file.get_32()
 	# a MagicaVoxel .vox file starts with a 'magic' 4 character 'VOX ' identifier
 	if magic == "VOX ":
-		var size := Vector3()
+		var size := Vector3i()
 		var names = {}
 		var chunkNum = 0
 
 		while file.get_position() < file.get_length():
 			# each chunk has an ID, size and child chunks
 
-			var chunk = MVChunk.new()
+			var chunk := MVChunk.new()
 			chunk.init(file)
 			var chunkName = chunk.id
 			# there are only a few chunks we care about, and they are SIZE, XYZI, TRNG?, RGBA
@@ -396,7 +409,7 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 			elif chunkName == "XYZI":
 				# XYZI contains n voxels
 				var numVoxels = file.get_32()
-				var chunkData = {'data': [], 'vox': VoxData.new(size), 'numVoxels': numVoxels}
+				var chunkData := ChunkData.new(size, numVoxels)
 				data.append(chunkData)
 
 				for i in range(0,numVoxels):
@@ -524,6 +537,7 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 	for chunk in data:
 		var voxelData = chunk.vox
 		var smoothing = options.smoothing
+		var cull_interior = options.get('cull_interior_regions', true)
 		var max_smoothing = ceil(smoothing)
 		for voxel in chunk.vox.voxels():
 			if !voxel:
@@ -539,29 +553,46 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 
 		time('chunk %s normals' % [chunk.data[0].chunkNum])
 		var directions := PackedVector3Array([Vector3.FORWARD, Vector3.RIGHT, Vector3.UP])
-		if smoothing > 0:
+		if smoothing > 0 || cull_interior:
+			var max_idx := maxi(max_smoothing, 1)
+			# these steps are broken into 2 passes to avoid cubic time complexity
 			# pass1, collect primary axes neighbour smoothing levels..
+			# also collect neigbour count for primary axes
 			for v in chunk.vox.voxels():
 				if v:
-					var r = Vector3()
-					for s_i in range(-max_smoothing, max_smoothing + 1):
-						var fraction = max(0, 1 - float(abs(s_i)) / float(smoothing + 1))
+					var nn := Vector3()
+					var nv := Vector3()
+					for s_i in range(-max_idx, max_idx + 1):
+						var fraction := maxf(0.0, 1 - float(abs(s_i)) / float(smoothing + 1))
 						for d in directions:
-							var voxel = chunk.vox.get_vox(s_i * d + v.pos)
+							var voxel := chunk.vox.get_vox(s_i * d + v.pos)
 							if voxel:
-								r += voxel.normal * fraction
-					v.neighbour_normals = r
+								nn += voxel.normal * fraction
+								if cull_interior && abs(s_i) == 1:
+									nv += (s_i * d)
+									v.neighbour_count += 1
+					v.neighbour_normals = nn
+					v.neighbour_vector = nv
 			# pass2, collect smoothed neighbour values
+			# also check neighbour's neighbour_vector to decide if we are culled
 			for v in chunk.vox.voxels():
 				if v:
-					var r = Vector3()
-					for s_i in range(-max_smoothing, max_smoothing + 1):
+					var nv := Vector3()
+					var nn := Vector3()
+					for s_i in range(-max_idx, max_idx + 1):
 						var fraction = max(0, 1 - float(abs(s_i)) / float(smoothing + 1))
 						for d in directions:
 							var voxel = chunk.vox.get_vox(s_i * d + v.pos)
 							if voxel:
-								r += voxel.neighbour_normals * fraction
-					v.normal = r
+								nn += voxel.neighbour_normals * fraction
+								if cull_interior && abs(s_i) == 1:
+									# eliminate the axis we are checking from
+									# our neighbour's neighbour vector.
+									# We already know we have a neighbour in 'this' direction
+									nv += voxel.neighbour_vector * (Vector3.ONE - d.abs())
+					v.normal = nn
+					v.culled = cull_interior && v.neighbour_count == 6 && nv.length() == 0
+
 
 		time('chunk %s normal smoothing' % [chunk.data[0].chunkNum])
 		var b = 0
@@ -587,8 +618,12 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 		assert(weights_sz == 4, "ARRAY_FLAG_USE_8_BONE_WEIGHTS not yet supported")
 		var center = Transform3D(Basis(), -chunk.vox.center())
 		var center_tfm = transform * center
+		var culled_count := 0
 
 		for voxel in chunk.data:
+			if voxel.culled:
+				culled_count += 1
+				continue
 			st.set_color(voxel.color)
 			var normal = voxel.normal
 			normal = normal.normalized()
@@ -611,6 +646,9 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 			for tri in to_draw:
 				st.add_vertex( (tri*0.5)+voxel.pos+dif)
 			"""
+
+		if MESH_DBG:
+			print('culled %s interior voxels' % [culled_count])
 		var sz = chunk.vox.size
 		time('chunk %s geometry %s/%s %s (dict:%s) %s..%s' % [
 			chunk.data[0].chunkNum, chunk.numVoxels, sz.volume(), sz, chunk.vox.use_dict,
@@ -620,9 +658,8 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 		if TIME_DBG:
 			var USEC_TO_MSEC = 0.001
 			var t := PackedInt64Array([0, 0, 0, 0, 0, 0])
-			for v in chunk.vox:
-				for i in range(len(t)):
-					t[i] += v.t[i]
+			for i in range(len(t)):
+				t[i] += chunk.vox.t[i]
 			print('t=%s' % [[
 				t[0] * USEC_TO_MSEC, t[1] * USEC_TO_MSEC, t[2] * USEC_TO_MSEC, t[3] * USEC_TO_MSEC
 			]])
@@ -647,7 +684,7 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 	time('commit mesh')
 	_time = start_time
 	time('total')
-	data = null
+	data.clear()
 	return mesh
 
 func _gen_colors(count: int) -> PackedColorArray:
