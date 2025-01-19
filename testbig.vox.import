@@ -14,6 +14,6 @@ dest_files=["res://.godot/imported/testbig.vox-0774ee30c66c93108f117518a3f45165.
 
 root_scale=0.1
 origin=0
-smoothing=0.0
+smoothing=3.0
 copy_bones_to_uv=false
-cull_interior_regions=true
+wall_thickness=2

@@ -45,8 +45,7 @@ class MVVoxels extends RefCounted:
 	var color: Color
 	var normal := Vector3()
 	var neighbour_normals := Vector3()
-	# Similar to normals, but no smoothing.
-	var neighbour_vector := Vector3()
+	var wall_normal := Vector3()
 	var neighbour_count := 0
 	var culled := false
 
@@ -537,8 +536,7 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 	for chunk in data:
 		var voxelData = chunk.vox
 		var smoothing = options.smoothing
-		var cull_interior = options.get('cull_interior_regions', true)
-		var max_smoothing = ceil(smoothing)
+		var wall_thickness = options.get('wall_thickness', 1.5)
 		for voxel in chunk.vox.voxels():
 			if !voxel:
 				return
@@ -553,45 +551,56 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 
 		time('chunk %s normals' % [chunk.data[0].chunkNum])
 		var directions := PackedVector3Array([Vector3.FORWARD, Vector3.RIGHT, Vector3.UP])
-		if smoothing > 0 || cull_interior:
-			var max_idx := maxi(max_smoothing, 1)
+		if smoothing > 0 || wall_thickness > 0:
+			var max_idx := maxi(ceil(smoothing), ceil(wall_thickness + 1.0))
 			# these steps are broken into 2 passes to avoid cubic time complexity
-			# pass1, collect primary axes neighbour smoothing levels..
-			# also collect neigbour count for primary axes
+			# similar to a gausian blur shader, where the axes are processed separately
+			# and then combined in linear passes
+			# pass1, collect primary axes neighbour normals and wall_normal
 			for v in chunk.vox.voxels():
 				if v:
 					var nn := Vector3()
-					var nv := Vector3()
+					var wd := Vector3()
+					var wd_len := 0.0
+					var w_nearest := INF
 					for s_i in range(-max_idx, max_idx + 1):
-						var fraction := maxf(0.0, 1 - float(abs(s_i)) / float(smoothing + 1))
+						var fasi := float(abs(s_i))
+						var n_frac := maxf(0.0, 1 - fasi / float(smoothing + 1))
 						for d in directions:
-							var voxel := chunk.vox.get_vox(s_i * d + v.pos)
-							if voxel:
-								nn += voxel.normal * fraction
-								if cull_interior && abs(s_i) == 1:
-									nv += (s_i * d)
-									v.neighbour_count += 1
+							var other := chunk.vox.get_vox(s_i * d + v.pos)
+							if other:
+								nn += other.normal * n_frac
+								if wall_thickness && s_i != 0:
+									if other.normal != Vector3():
+										w_nearest = minf(w_nearest, fasi)
+										wd += other.normal.normalized()
+									if abs(s_i) == 1:
+										v.neighbour_count += 1
 					v.neighbour_normals = nn
-					v.neighbour_vector = nv
-			# pass2, collect smoothed neighbour values
-			# also check neighbour's neighbour_vector to decide if we are culled
+					if wd != Vector3():
+						v.wall_normal = wd.normalized() * w_nearest
+			# pass2, collect smoothed neighbour normal values
+			max_idx = ceil(smoothing)
 			for v in chunk.vox.voxels():
 				if v:
-					var nv := Vector3()
 					var nn := Vector3()
+					var wd := Vector3()
+					var wd_count := 0.0
 					for s_i in range(-max_idx, max_idx + 1):
-						var fraction = max(0, 1 - float(abs(s_i)) / float(smoothing + 1))
+						var fasi := float(abs(s_i))
+						var n_frac := maxf(0.0, 1 - fasi / float(smoothing + 1))
 						for d in directions:
-							var voxel = chunk.vox.get_vox(s_i * d + v.pos)
-							if voxel:
-								nn += voxel.neighbour_normals * fraction
-								if cull_interior && abs(s_i) == 1:
-									# eliminate the axis we are checking from
-									# our neighbour's neighbour vector.
-									# We already know we have a neighbour in 'this' direction
-									nv += voxel.neighbour_vector * (Vector3.ONE - d.abs())
+							var other = chunk.vox.get_vox(s_i * d + v.pos)
+							if other:
+								nn += other.neighbour_normals * n_frac
 					v.normal = nn
-					v.culled = cull_interior && v.neighbour_count == 6 && nv.length() == 0
+					var wdl = v.wall_normal.length()
+					# 0 means it's not even close to any walls
+					# > wall_thickness means it's on the cusp, depending on blended wall distance
+					v.culled = wall_thickness && v.neighbour_count == 6 && (wdl == 0 || wdl >= wall_thickness + 1e-5)
+					if v.normal == Vector3():
+						# interior voxels don't have a normal yet, assign one
+						v.normal = v.wall_normal.normalized()
 
 
 		time('chunk %s normal smoothing' % [chunk.data[0].chunkNum])

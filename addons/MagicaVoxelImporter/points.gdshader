@@ -105,18 +105,19 @@ void vertex() {
 			vec3 voxel_start = VERTEX - half_voxel;
 			vec3 voxel_end = VERTEX + half_voxel;
 			// voxel corners
-			vec4 points[8];
 			vec4 voxel = mvp * vec4(VERTEX, 1.0);
 			voxel.xyz /= voxel.w;
-			// GLES2 doesn't support array initalizers
-			points[0] = MODELVIEW_MATRIX * vec4(voxel_start.xyz, 1.0);
-			points[1] = MODELVIEW_MATRIX * vec4(voxel_start.xy, voxel_end.z, 1.0);
-			points[2] = MODELVIEW_MATRIX * vec4(voxel_start.x, voxel_end.yz, 1.0);
-			points[3] = MODELVIEW_MATRIX * vec4(voxel_start.x, voxel_end.y, voxel_start.z, 1.0);
-			points[4] = MODELVIEW_MATRIX * vec4(voxel_end.xyz, 1.0);
-			points[5] = MODELVIEW_MATRIX * vec4(voxel_end.xy, voxel_start.z, 1.0);
-			points[6] = MODELVIEW_MATRIX * vec4(voxel_end.x, voxel_start.yz, 1.0);
-			points[7] = MODELVIEW_MATRIX * vec4(voxel_end.x, voxel_start.y, voxel_end.z, 1.0);
+			// project all 8 points of a cube to find the voxel's size on screen
+			vec4 points[8] = {
+				vec4(voxel_start.xyz, 1.0),
+				vec4(voxel_start.xy, voxel_end.z, 1.0),
+				vec4(voxel_start.x, voxel_end.yz, 1.0),
+				vec4(voxel_start.x, voxel_end.y, voxel_start.z, 1.0),
+				vec4(voxel_end.xyz, 1.0),
+				vec4(voxel_end.xy, voxel_start.z, 1.0),
+				vec4(voxel_end.x, voxel_start.yz, 1.0),
+				vec4(voxel_end.x, voxel_start.y, voxel_end.z, 1.0)
+			};
 
 			voxel_size = vec2(0.0);
 			int j = 0;
@@ -126,6 +127,7 @@ void vertex() {
 			float min_z = 10000.0;
 			float max_z = -10000.0;
 			for (int i = 0; i < 8; i++) {
+				points[i] = MODELVIEW_MATRIX * points[i];
 				points[i].xyz /= points[i].w;
 				tl = min(tl, points[i].xy);
 				br = max(br, points[i].xy);
@@ -149,17 +151,6 @@ void vertex() {
 			voxel_size.y = abs(voxel_size.y);
 			voxel_size += edge_boost * 0.1;
 			voxel_size *= vp_half;
-			if (!ortho) {
-				vec4 view_dir = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
-				view_dir.xyz /= view_dir.w;
-				// Direction from camera to voxel
-				float cull_normal = dot(normalize(view_dir.xyz), NORMAL);
-				// Cull voxels facing away from the camera..
-				// allow voxels somewhat facing the camera so we keep 'rim' voxels
-				if (cull_normal > 0.5) {
-					voxel_size = vec2(0.0);
-				}
-			}
 		}
 		// screen door transparency if the voxel size is too small, reduces depth buffer overwrites
 		// which improves performance a lot
@@ -182,7 +173,7 @@ void vertex() {
 		POINT_SIZE = max(voxel_size.x, voxel_size.y);
 
 		if (show_normals > 0.0) {
-			COLOR = mix(COLOR, vec4(nt_normal, 1.0), show_normals);
+			COLOR = mix(COLOR, vec4(abs(nt_normal), 1.0), show_normals);
 			if (length(nt_normal) == 0.0) {
 				COLOR = vec4(1.0, 0, 1.0, 0);
 			}

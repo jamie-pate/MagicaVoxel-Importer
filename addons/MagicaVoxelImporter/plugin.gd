@@ -57,10 +57,10 @@ class ImportPlugin extends EditorImportPlugin:
 				'hint_string': 'Off,Debug'
 			},
 			{
-				'name': 'cull_interior_regions',
-				'default_value': true,
-				'property_hint': PROPERTY_HINT_ENUM,
-				'hint_string': 'No,Yes'
+				'name': 'wall_thickness',
+				'default_value': 2,
+				'property_hint': PROPERTY_HINT_RANGE,
+				'hint_string': '0,10,1,or_greater'
 			}
 		]
 		return options

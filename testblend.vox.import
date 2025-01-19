@@ -16,4 +16,4 @@ root_scale=0.25
 origin=0
 smoothing=1.0
 copy_bones_to_uv=true
-cull_interior_regions=true
+wall_thickness=2

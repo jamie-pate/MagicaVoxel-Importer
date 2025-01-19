@@ -1,36 +1,14 @@
-[gd_scene load_steps=5 format=3 uid="uid://5mlcqkayskfd"]
+[gd_scene load_steps=3 format=3 uid="uid://5mlcqkayskfd"]
 
 [ext_resource type="ArrayMesh" uid="uid://bwbs8b6lboit0" path="res://testbig.vox" id="1_3rivb"]
-[ext_resource type="Shader" path="res://addons/MagicaVoxelImporter/points.gdshader" id="2_2iev1"]
 [ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_vd0yx"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_hynpc"]
-render_priority = 0
-shader = ExtResource("2_2iev1")
-shader_parameter/albedo = Color(1, 1, 1, 0.45098)
-shader_parameter/specular = null
-shader_parameter/metallic = null
-shader_parameter/roughness = null
-shader_parameter/metallic_texture_channel = null
-shader_parameter/roughness_texture_channel = null
-shader_parameter/uv1_scale = null
-shader_parameter/uv1_offset = null
-shader_parameter/show_normals = null
-shader_parameter/show_bone_weights = null
-shader_parameter/root_scale = 0.1
-shader_parameter/fast = null
-shader_parameter/render_head = true
-shader_parameter/neck_bone_index = 0
-shader_parameter/head_bone_index = 0
-shader_parameter/phase_shift = 0.0
-shader_parameter/super_black = false
-shader_parameter/lod_bias = 2.0
-shader_parameter/lod_worst = 5.0
 
 [node name="Testbig" type="Node3D"]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 mesh = ExtResource("1_3rivb")
-surface_material_override/0 = SubResource("ShaderMaterial_hynpc")
 script = ExtResource("2_vd0yx")
 render_head = true
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2777, 5.36427, -3.53052)
