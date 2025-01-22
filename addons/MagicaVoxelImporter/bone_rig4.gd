@@ -22,6 +22,7 @@ var _old_prefix = null
 var _collecting_bones := false
 
 func _ready():
+	add_to_group("MVBoneRig")
 	set_physics_process(false)
 	if !Engine.is_editor_hint():
 		# just remove ourself outside the editor
@@ -51,7 +52,7 @@ func _get_property_list():
 
 func _set_collect_bones(value):
 	if !collect_bones && value:
-		_collect_bones_once()
+		collect_bones_once()
 
 
 func _set_mirror_ltr(value):
@@ -97,17 +98,17 @@ func _set_bone_prefix(value):
 
 func _set_mesh_path(value: NodePath):
 	mesh_path = value
-	_collect_bones_once()
+	collect_bones_once()
 
 func _set_skeleton_path(value: NodePath):
 	skeleton_path = value
-	_collect_bones_once()
+	collect_bones_once()
 
 
-func _collect_bones_once():
+func collect_bones_once(force := false):
 	if is_inside_tree() && !collect_bones && Engine.is_editor_hint():
 		var EditorInterface = Engine.get_singleton("EditorInterface")
-		if !self in EditorInterface.get_selection().get_selected_nodes():
+		if !self in EditorInterface.get_selection().get_selected_nodes() && !force:
 			return
 		if _collecting_bones:
 			return
@@ -329,7 +330,7 @@ func _collect_bones():
 	print('Bone Collection took %sms' % [Time.get_ticks_msec() - start])
 	# big hack...
 	if auto_reimport:
-		call_deferred('re_import')
+		re_import()
 
 
 # Return each unique pair of items from all items of an array
@@ -399,11 +400,5 @@ func re_import():
 		var mesh := mi.mesh as ArrayMesh
 		if !mesh:
 			return
-		var ei = Engine.get_singleton("EditorInterface")
-		var bc: Control
-		bc = ei.get_base_control()
-		if bc:
-			# super duper big hack
-			var import = bc.find_child('Import', true, false)
-			if import:
-				import._reimport()
+		var fs := EditorInterface.get_resource_filesystem()
+		fs.reimport_files([mesh.resource_path])

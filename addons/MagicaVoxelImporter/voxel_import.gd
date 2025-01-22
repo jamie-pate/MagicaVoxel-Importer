@@ -349,11 +349,11 @@ func time(desc: String):
 		print('%s %s ms' % [desc, _time - old_time])
 
 #Gets called when pressing a file gets imported / reimported
-func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=null, old_mesh: ArrayMesh = null ):
+func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=null):
 	if !"mesh_flags" in options:
 		# allow user to specify BitField[Mesh.ArrayFormat] flags like ARRAY_FLAG_USE_8_BONE_WEIGHTS
 		options.mesh_flags = 0
-	print_debug('Import %s' % [source_path])
+	print('Import %s' % [source_path])
 	_time = Time.get_ticks_msec()
 	var start_time = _time
 	var CHUNK_DBG = false
@@ -681,14 +681,9 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 	material.set_shader_parameter('root_scale', root_scale)
 	#material.set_flag(material.FLAG_USE_COLOR_ARRAY,true)
 	st.set_material(material)
-	var mesh: ArrayMesh
 	time('set material')
-	if old_mesh:
-		old_mesh.clear_surfaces()
-		mesh = st.commit(old_mesh, options.mesh_flags)
-	else:
-		mesh = st.commit(null, options.mesh_flags)
 
+	var mesh := st.commit(null, options.mesh_flags)
 	mesh.set_meta('root_scale', root_scale)
 	time('commit mesh')
 	_time = start_time
