@@ -35,8 +35,10 @@ func _collect_bones(scene_path: String) -> Array[String]:
 			if rp.ends_with(".vox"):
 				result.append(rp)
 				print("Collecting for %s" % [rp])
+				var auto_reimport = node.auto_reimport
 				node.auto_reimport = false
 				await node.collect_bones_once(true)
+				node.auto_reimport = auto_reimport
 	root.free()
 	return result
 
