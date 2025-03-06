@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://5mlcqkayskfd"]
 
 [ext_resource type="ArrayMesh" uid="uid://bwbs8b6lboit0" path="res://testbig.vox" id="1_3rivb"]
-[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_vd0yx"]
+[ext_resource type="Script" uid="uid://ohl6eerjxqdk" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_vd0yx"]
 
 [node name="Testbig" type="Node3D"]
 

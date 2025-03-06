@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3 uid="uid://dawxocmrrolv3"]
 
-[ext_resource type="Script" path="res://main.gd" id="1_g81ps"]
-[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_8hjk1"]
+[ext_resource type="Script" uid="uid://64t51to0l4bh" path="res://main.gd" id="1_g81ps"]
+[ext_resource type="Script" uid="uid://ohl6eerjxqdk" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_8hjk1"]
 [ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="2_tdalp"]
 [ext_resource type="PackedScene" uid="uid://dq61jnlrhttcu" path="res://xr_main.tscn" id="4_aia8b"]
 

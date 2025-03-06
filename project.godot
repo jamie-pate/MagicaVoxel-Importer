@@ -12,7 +12,7 @@ config_version=5
 
 config/name="MagicaVoxelImporter"
 run/main_scene="res://Main.tscn"
-config/features=PackedStringArray("4.3")
+config/features=PackedStringArray("4.4")
 config/icon="res://icon.png"
 
 [display]
@@ -39,5 +39,5 @@ openxr/enabled=true
 openxr/reference_space=0
 openxr/environment_blend_mode=2
 openxr/startup_alert=false
-shaders/enabled=true
 openxr/extensions/hand_tracking_unobstructed_data_source=true
+shaders/enabled=true

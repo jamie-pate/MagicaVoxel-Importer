@@ -1,29 +1,31 @@
 [gd_scene load_steps=8 format=3 uid="uid://5ky488mc26ia"]
 
-[ext_resource type="Shader" path="res://addons/MagicaVoxelImporter/points.gdshader" id="1_7fym1"]
+[ext_resource type="Shader" uid="uid://bw4sgq6ts0ohp" path="res://addons/MagicaVoxelImporter/points.gdshader" id="1_7fym1"]
 [ext_resource type="ArrayMesh" uid="uid://c5dl5k6nqbv5j" path="res://testsm.vox" id="1_ct7gk"]
-[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_0ntve"]
-[ext_resource type="Script" path="res://addons/MagicaVoxelImporter/bone_rig4.gd" id="4_gbujb"]
+[ext_resource type="Script" uid="uid://ohl6eerjxqdk" path="res://addons/MagicaVoxelImporter/voxel_mesh.gd" id="2_0ntve"]
+[ext_resource type="Script" uid="uid://bx04cllkqtgfa" path="res://addons/MagicaVoxelImporter/bone_rig4.gd" id="4_gbujb"]
 [ext_resource type="PackedScene" uid="uid://dja84egovn7us" path="res://testsm-skeleton.gltf" id="4_sjj2i"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_lbbvm"]
 render_priority = 0
 shader = ExtResource("1_7fym1")
 shader_parameter/albedo = Color(1, 1, 1, 1)
-shader_parameter/specular = null
-shader_parameter/metallic = null
-shader_parameter/roughness = null
-shader_parameter/metallic_texture_channel = null
-shader_parameter/roughness_texture_channel = null
-shader_parameter/uv1_scale = null
-shader_parameter/uv1_offset = null
-shader_parameter/show_normals = null
+shader_parameter/specular = 0.0
+shader_parameter/metallic = 0.0
+shader_parameter/roughness = 0.0
+shader_parameter/metallic_texture_channel = Vector4(0, 0, 0, 0)
+shader_parameter/roughness_texture_channel = Vector4(0, 0, 0, 0)
+shader_parameter/uv1_scale = Vector3(0, 0, 0)
+shader_parameter/uv1_offset = Vector3(0, 0, 0)
+shader_parameter/show_normals = 0.0
 shader_parameter/show_bone_weights = 1.0
 shader_parameter/root_scale = 0.075
-shader_parameter/fast = null
+shader_parameter/fast = false
 shader_parameter/render_head = true
-shader_parameter/neck_height = 0.0
+shader_parameter/neck_bone_index = 0
+shader_parameter/head_bone_index = 0
 shader_parameter/phase_shift = 0.0
+shader_parameter/super_black = false
 shader_parameter/lod_bias = 1.0
 shader_parameter/lod_worst = 5.0
 
