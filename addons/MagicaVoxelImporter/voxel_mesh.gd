@@ -38,14 +38,30 @@ func _get_mats() -> Array:
 	return result
 
 
-func get_neck_height():
+func get_neck_height() -> float:
+	return get_bone_height("Neck")
+
+
+func get_head_height() -> float:
+	# try to get the 'head top' bone if it exists, otherwise head
+	var h := get_bone_height("Head", true)
+	if h > 0:
+		return h
+	return get_bone_height("Head")
+
+
+func get_bone_height(bone, child_of := false) -> float:
 	var skel := get_node_or_null(skeleton) as Skeleton3D
 	var height := 0.0
 	if skel:
 		for i in skel.get_bone_count():
 			# assuming default godot bonemap names for bones
 			var bone_name = skel.get_bone_name(i)
-			if bone_name == "Neck":
+			if child_of:
+				var p := skel.get_bone_parent(i)
+				if p > -1:
+					bone_name = skel.get_bone_name(p)
+			if bone_name == bone:
 				var tfm := skel.get_bone_rest(i)
 				height += tfm.origin.y
 				var p = i
