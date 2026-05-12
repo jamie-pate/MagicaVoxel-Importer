@@ -453,7 +453,7 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 				nodes[shp.node_id] = shp
 			else:
 				var buff = file.get_buffer(chunk.size)  # read any excess bytes
-				if !(chunkName in ['MATL', 'rOBJ']) and chunkName and CHUNK_DBG:
+				if !(chunkName in ['MAIN', 'MATL', 'rOBJ']) and chunkName and CHUNK_DBG:
 					print('Unknown chunk: %s with %d children (%db)' % [chunkName, chunk.child_count, chunk.size])
 					print('{0}'.format([buff]))
 			if file.get_position() < file.get_length() && file.get_position() != chunk.position + chunk.size:
@@ -501,7 +501,6 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 		var m_z = -1000
 		var s_y = 1000
 		var m_y = -1000
-		# todo: transform using transformnodes above?
 		for chunk in data:
 			var v = chunk.vox
 			if v.aabb_start_x < s_x:
@@ -523,10 +522,18 @@ func load_vox( source_path, options={mesh_flags=0}, platforms=null, gen_files=nu
 		var y_dif = m_y - s_y
 		var y_half = float(y_dif) * 0.5
 		transform.origin = Vector3(0, ceil(y_half), 0)
-	else:
+	elif len(tfm):
 		var revelant_transforms = find_relevant_transforms(tfm[0], tfm, nodes, groups, shapes, models, 0)
 		for t in revelant_transforms:
 			transform *= Transform3D(t.basis, Vector3()) * Transform3D(Basis(), t.origin)
+	else:
+		var m_y = -1000
+		for chunk in data:
+			var v = chunk.vox
+			if v.aabb_end_y > m_y:
+				m_y = v.aabb_end_y
+		# if there's no transform, center the model xz and set the bottom at y==0
+		transform = Transform3D(Basis(), Vector3(0, 0, m_y))
 
 	time('set origin')
 	# Create the mesh
